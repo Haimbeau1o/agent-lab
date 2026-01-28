@@ -1,0 +1,115 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// API 配置表
+model ApiConfig {
+  id          String   @id @default(cuid())
+  name        String   // 配置名称（如 "OpenAI GPT-4"）
+  provider    String   // 提供商（openai, anthropic, custom）
+  apiKey      String   // 加密存储的 API Key
+  baseUrl     String   // API 基础 URL
+  modelName   String   // 模型名称
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("api_configs")
+}
+
+// Agent 模板表
+model AgentTemplate {
+  id           String   @id @default(cuid())
+  name         String   // Agent 名称
+  type         String   // 类型：intent, dialogue, memory
+  description  String   // 描述
+  config       String   // Agent 配置（JSON 字符串）
+  systemPrompt String   // 系统提示词
+  isBuiltin    Boolean  @default(false) // 是否为内置模板
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  testRuns     TestRun[]
+
+  @@map("agent_templates")
+}
+
+// 测试任务表
+model Task {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  type        String   // intent, dialogue, memory
+  testCases   String   // 测试用例数组（JSON 字符串）
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  testRuns    TestRun[]
+
+  @@map("tasks")
+}
+
+// 数据集表
+model Dataset {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // intent, dialogue, memory
+  description String?
+  data        String   // 实际数据（JSON 数组字符串）
+  size        Int      // 数据条数
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  testRuns    TestRun[]
+
+  @@map("datasets")
+}
+
+// 测试执行记录表
+model TestRun {
+  id          String        @id @default(cuid())
+  agentId     String
+  agent       AgentTemplate @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  taskId      String
+  task        Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  datasetId   String?
+  dataset     Dataset?      @relation(fields: [datasetId], references: [id], onDelete: SetNull)
+  status      String        // pending, running, completed, failed
+  startedAt   DateTime      @default(now())
+  completedAt DateTime?
+
+  results     TestResult[]
+
+  @@map("test_runs")
+}
+
+// 测试结果表
+model TestResult {
+  id          String   @id @default(cuid())
+  testRunId   String
+  testRun     TestRun  @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+
+  input       String   // 输入数据（JSON 字符串）
+  output      String   // 输出数据（JSON 字符串）
+  expected    String?  // 期望输出（JSON 字符串，如果有）
+
+  // 通用指标
+  latency     Int      // 延迟（毫秒）
+  tokenCount  Int?     // Token 使用量
+
+  // 模块特定指标（JSON 存储）
+  metrics     String   // JSON 字符串
+
+  isCorrect   Boolean? // 是否正确（如果可判定）
+  createdAt   DateTime @default(now())
+
+  @@map("test_results")
+}

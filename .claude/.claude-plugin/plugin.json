@@ -1,0 +1,31 @@
+{
+  "name": "adong-vibecoding",
+  "description": "阿东的 VibeCoding 开发范式 - 基于 Claude Code 的高效 AI Native 开发工作流，包含 Agents、Skills、Commands、Rules 等模块化架构",
+  "author": {
+    "name": "阿东",
+    "url": "https://github.com/adongwanai"
+  },
+  "homepage": "https://github.com/adongwanai/adong-vibecoding",
+  "repository": "https://github.com/adongwanai/adong-vibecoding",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "tri-ai",
+    "gemini",
+    "tdd",
+    "agents",
+    "skills",
+    "hooks",
+    "commands",
+    "rules",
+    "code-review",
+    "security",
+    "workflow",
+    "automation",
+    "best-practices",
+    "ai-native",
+    "development-template"
+  ],
+  "commands": "./commands",
+  "skills": "./skills"
+}

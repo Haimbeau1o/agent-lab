@@ -1,0 +1,44 @@
+{
+  "name": "adong-vibecoding",
+  "owner": {
+    "name": "阿东",
+    "email": "zhangzhendong22@mails.ucas.ac.cn"
+  },
+  "metadata": {
+    "description": "阿东的 VibeCoding 开发范式 - 基于 Claude Code 的高效 AI Native 开发工作流"
+  },
+  "plugins": [
+    {
+      "name": "adong-vibecoding",
+      "source": "./",
+      "description": "阿东的 VibeCoding 开发范式 - 包含 Agents、Skills、Commands、Rules 等模块化架构",
+      "author": {
+        "name": "阿东"
+      },
+      "homepage": "https://github.com/adongwanai/adong-vibecoding",
+      "repository": "https://github.com/adongwanai/adong-vibecoding",
+      "license": "MIT",
+      "keywords": [
+        "agents",
+        "skills",
+        "hooks",
+        "commands",
+        "tdd",
+        "code-review",
+        "security",
+        "best-practices"
+      ],
+      "category": "workflow",
+      "tags": [
+        "agents",
+        "skills",
+        "hooks",
+        "commands",
+        "tdd",
+        "code-review",
+        "security",
+        "best-practices"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,191 @@
+# 贡贡献指南 - 阿东的 VibeCoding 开发范式
+
+感谢你想要贡献！这个仓库是 Claude Code 用户的社区资源。
+
+## What We're Looking For
+
+### Agents
+
+New agents that handle specific tasks well:
+- Language-specific reviewers (Python, Go, Rust)
+- Framework experts (Django, Rails, Laravel, Spring)
+- DevOps specialists (Kubernetes, Terraform, CI/CD)
+- Domain experts (ML pipelines, data engineering, mobile)
+
+### Skills
+
+Workflow definitions and domain knowledge:
+- Language best practices
+- Framework patterns
+- Testing strategies
+- Architecture guides
+- Domain-specific knowledge
+
+### Commands
+
+Slash commands that invoke useful workflows:
+- Deployment commands
+- Testing commands
+- Documentation commands
+- Code generation commands
+
+### Hooks
+
+Useful automations:
+- Linting/formatting hooks
+- Security checks
+- Validation hooks
+- Notification hooks
+
+### Rules
+
+Always-follow guidelines:
+- Security rules
+- Code style rules
+- Testing requirements
+- Naming conventions
+
+### MCP Configurations
+
+New or improved MCP server configs:
+- Database integrations
+- Cloud provider MCPs
+- Monitoring tools
+- Communication tools
+
+---
+
+## How to Contribute
+
+### 1. Fork the repo
+
+```bash
+git clone https://github.com/YOUR_USERNAME/adong-vibecoding.git
+cd adong-vibecoding
+```
+
+### 2. Create a branch
+
+```bash
+git checkout -b add-python-reviewer
+```
+
+### 3. Add your contribution
+
+Place files in the appropriate directory:
+- `agents/` for new agents
+- `skills/` for skills (can be single .md or directory)
+- `commands/` for slash commands
+- `rules/` for rule files
+- `hooks/` for hook configurations
+- `mcp-configs/` for MCP server configs
+
+### 4. Follow the format
+
+**Agents** should have frontmatter:
+
+```markdown
+---
+name: agent-name
+description: What it does
+tools: Read, Grep, Glob, Bash
+model: sonnet
+---
+
+Instructions here...
+```
+
+**Skills** should be clear and actionable:
+
+```markdown
+# Skill Name
+
+## When to Use
+
+...
+
+## How It Works
+
+...
+
+## Examples
+
+...
+```
+
+**Commands** should explain what they do:
+
+```markdown
+---
+description: Brief description of command
+---
+
+# Command Name
+
+Detailed instructions...
+```
+
+**Hooks** should include descriptions:
+
+```json
+{
+  "matcher": "...",
+  "hooks": [...],
+  "description": "What this hook does"
+}
+```
+
+### 5. Test your contribution
+
+Make sure your config works with Claude Code before submitting.
+
+### 6. Submit a PR
+
+```bash
+git add .
+git commit -m "Add Python code reviewer agent"
+git push origin add-python-reviewer
+```
+
+Then open a PR with:
+- What you added
+- Why it's useful
+- How you tested it
+
+---
+
+## Guidelines
+
+### Do
+
+- Keep configs focused and modular
+- Include clear descriptions
+- Test before submitting
+- Follow existing patterns
+- Document any dependencies
+
+### Don't
+
+- Include sensitive data (API keys, tokens, paths)
+- Add overly complex or niche configs
+- Submit untested configs
+- Create duplicate functionality
+- Add configs that require specific paid services without alternatives
+
+---
+
+## File Naming
+
+- Use lowercase with hyphens: `python-reviewer.md`
+- Be descriptive: `tdd-workflow.md` not `workflow.md`
+- Match the agent/skill name to the filename
+
+---
+
+## 有问题？
+
+提 issue 或通过 GitHub 联系：[@adongwanai](https://github.com/adongwanai)
+
+---
+
+感谢贡献。让我们一起构建一个优秀的资源。
