@@ -1,3 +1,5 @@
+'use client';
+
 import {
   Bot,
   ClipboardList,
@@ -8,6 +10,10 @@ import {
   Zap,
   Settings
 } from "lucide-react";
+import { TaskRunner } from "../components/TaskRunner";
+import { TraceViewer } from "../components/TraceViewer";
+import { TestResults } from "../components/TestResults";
+import { useTestRun } from "../hooks/useTestRun";
 
 const stats = [
   { name: "已配置 Agent", value: "12", icon: Bot, color: "text-indigo-400", bg: "bg-indigo-500/10" },
@@ -17,6 +23,8 @@ const stats = [
 ];
 
 export default function Dashboard() {
+  const { testRun, report, status, startTest } = useTestRun();
+
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
@@ -62,60 +70,57 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Recent Activity & Quick Actions */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2 glass-card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
-            <h2 className="text-lg font-semibold text-white">最近评测</h2>
-            <button className="text-sm font-medium text-indigo-400 hover:text-indigo-300 flex items-center">
-              查看全部 <ArrowUpRight className="ml-1 h-4 w-4" />
-            </button>
-          </div>
-          <div className="divide-y divide-zinc-800">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center justify-between px-6 py-4 hover:bg-zinc-800/50 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-white font-bold">
-                    A{i}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-white">意图识别 Agent - 生产环境</p>
-                    <p className="text-xs text-zinc-500">2 小时前 • 50 个测试用例</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-emerald-400">98.5%</p>
-                  <p className="text-xs text-zinc-500">准确率</p>
-                </div>
+      {/* Main Content Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column: Task Runner & Results */}
+        <div className="lg:col-span-2 space-y-8">
+          <TaskRunner onRun={startTest} isRunning={status === 'running'} />
+
+          {(status !== 'idle') && (
+            <div className="glass-card p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white">测试结果</h2>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${status === 'running' ? 'bg-blue-500/10 text-blue-400' :
+                    status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' :
+                      'bg-red-500/10 text-red-400'
+                  }`}>
+                  {status === 'running' ? '运行中' : status === 'completed' ? '已完成' : '失败'}
+                </span>
               </div>
-            ))}
-          </div>
+
+              <TestResults report={report} />
+              <TraceViewer testRun={testRun} />
+            </div>
+          )}
         </div>
 
-        <div className="glass-card p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">快速操作</h2>
-          <div className="space-y-3">
-            <button className="w-full flex items-center justify-between rounded-xl bg-zinc-900 p-4 text-sm font-medium text-white border border-zinc-800 hover:bg-zinc-800 transition-all">
-              <div className="flex items-center gap-3">
-                <Bot className="h-5 w-5 text-indigo-400" />
-                创建新 Agent
-              </div>
-              <ArrowUpRight className="h-4 w-4 text-zinc-500" />
-            </button>
-            <button className="w-full flex items-center justify-between rounded-xl bg-zinc-900 p-4 text-sm font-medium text-white border border-zinc-800 hover:bg-zinc-800 transition-all">
-              <div className="flex items-center gap-3">
-                <ClipboardList className="h-5 w-5 text-cyan-400" />
-                设计测试集
-              </div>
-              <ArrowUpRight className="h-4 w-4 text-zinc-500" />
-            </button>
-            <button className="w-full flex items-center justify-between rounded-xl bg-zinc-900 p-4 text-sm font-medium text-white border border-zinc-800 hover:bg-zinc-800 transition-all">
-              <div className="flex items-center gap-3">
-                <Settings className="h-5 w-5 text-amber-400" />
-                API 配置
-              </div>
-              <ArrowUpRight className="h-4 w-4 text-zinc-500" />
-            </button>
+        {/* Right Column: Quick Actions & Recent */}
+        <div className="space-y-8">
+          <div className="glass-card p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">快速操作</h2>
+            <div className="space-y-3">
+              <button className="w-full flex items-center justify-between rounded-xl bg-zinc-900 p-4 text-sm font-medium text-white border border-zinc-800 hover:bg-zinc-800 transition-all">
+                <div className="flex items-center gap-3">
+                  <Bot className="h-5 w-5 text-indigo-400" />
+                  创建新 Agent
+                </div>
+                <ArrowUpRight className="h-4 w-4 text-zinc-500" />
+              </button>
+              <button className="w-full flex items-center justify-between rounded-xl bg-zinc-900 p-4 text-sm font-medium text-white border border-zinc-800 hover:bg-zinc-800 transition-all">
+                <div className="flex items-center gap-3">
+                  <ClipboardList className="h-5 w-5 text-cyan-400" />
+                  设计测试集
+                </div>
+                <ArrowUpRight className="h-4 w-4 text-zinc-500" />
+              </button>
+              <button className="w-full flex items-center justify-between rounded-xl bg-zinc-900 p-4 text-sm font-medium text-white border border-zinc-800 hover:bg-zinc-800 transition-all">
+                <div className="flex items-center gap-3">
+                  <Settings className="h-5 w-5 text-amber-400" />
+                  API 配置
+                </div>
+                <ArrowUpRight className="h-4 w-4 text-zinc-500" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

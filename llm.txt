@@ -1,0 +1,376 @@
+太好了，这一步你等于在给整个项目和“四个 LLM 团队”写一份**工程操作手册**。
+下面是一份**完整版、重点突出的中文 `llm.txt`**，专门为：
+
+* Claude #1（架构/规划）
+* Claude #2（后端实现）
+* Gemini（前端实现）
+* Codex（Review / 修 Bug / 质量门禁）
+  协同工作而设计。
+
+你可以**原样放到仓库根目录 `llm.txt`**，作为所有 LLM 的长期上下文。
+
+---
+
+# llm.txt — Agent Lab 项目工程上下文（LLM 操作手册）
+
+## 0. 本文件的角色（必须先读）
+
+本文件定义了本项目的**不可协商规则、架构边界与开发范式**。
+所有 LLM（规划 / 后端 / 前端 / Review）必须以此作为**唯一真相源（Single Source of Truth）**。
+
+如果需求、架构或契约不清晰：
+➡️ **必须新开 Issue，而不是私自修改架构或 Contracts。**
+
+---
+
+## 1. 项目北极星（North Star）
+
+### 1.1 一句话定义
+
+**Agent Lab = 面向开发者的 Agent 能力实验台 + 标准化评测运行时（Eval Runtime）**
+用于以**可复现、可对比、可解释**的方式评估 Agent 的**单能力**和**多能力组合链路（Scenario）**。
+
+---
+
+### 1.2 核心用户问题
+
+开发者在做 Agent 时，无法可靠地：
+
+* 验证某个能力是否真的变好了
+* 对比同一能力的多种实现（模型 / prompt / 框架 / 本地服务）
+* 调试多步行为（工具调用 / 记忆读写 / 多轮对话）
+* 复现实验结果（配置 / 数据 / 代码版本漂移）
+
+---
+
+### 1.3 产品边界（必须长期坚持）
+
+本项目是**评测与验证基础设施**，不是生产系统平台。
+
+**我们做：**
+
+* 原子能力评测（AtomicTask）
+* 组合链路评测（ScenarioTask / 多步 Pipeline）
+* A/B 对比与回归评测
+* 内置指标 + 用户自定义 Evaluator
+* Trace / 可解释 / 可复现
+
+**我们不做：**
+
+* 生产 Agent 托管与编排平台
+* 企业级权限 / 多租户 / IAM（P1+ 才考虑）
+* 全流程自动化业务系统
+
+---
+
+## 2. 架构哲学（冻结规则，不可随意修改）
+
+### 2.1 分层模型
+
+系统严格分为三层：
+
+### A. Core Eval Engine（基础设施层 / Infra）
+
+职责：
+
+* 提供**固定 Pipeline**
+* 调度 Runner
+* 记录 Trace
+* 调用 Evaluator
+* 存储与对比结果
+
+Engine **不理解业务能力**（不关心 intent/dialogue/memory 是什么）。
+
+---
+
+### B. Capability Modules（能力模块层）
+
+示例：
+
+* intent
+* dialogue
+* memory
+* llm_capability
+* custom
+
+每个模块只负责：
+
+* 定义 Task 模板
+* 提供 Runner 实现
+* 提供默认 Evaluators
+* 提供 Demo Dataset + 文档
+
+模块**不得侵入 Core Engine**。
+
+---
+
+### C. Implementations（实现层）
+
+同一模块支持多个实现：
+
+* intent.rules
+* intent.llm
+* intent.local_service
+
+新增实现 = 新 Runner
+不得修改模块结构或 Engine。
+
+---
+
+## 3. Infra 的本质：固定 Pipeline + 固定扩展点
+
+### 3.1 固定 Pipeline（永远不变）
+
+所有能力、模块、功能都必须走这条闭环：
+
+1. **Define**
+   选择 Task / Scenario / Dataset / Runner / Evaluators
+2. **Execute**
+   运行 Runner / ScenarioRunner
+3. **Trace**
+   记录步骤 / 工具调用 / 记忆 / 日志 / 错误
+4. **Evaluate**
+   内置 + 用户自定义 Evaluators 打分
+5. **Store**
+   RunRecord / ScoreRecord / Provenance
+6. **Compare**
+   A/B / 历史回归 / 趋势
+7. **Report**
+   CLI / API / UI / Export
+
+---
+
+### 3.2 唯一允许的扩展点
+
+任何新功能必须属于以下之一：
+
+* Task Template（新任务结构）
+* Runner（新实现方式）
+* Evaluator（新指标 / 新评分逻辑）
+* Dataset Connector（数据来源）
+* Reporter / UI（展示层）
+
+**禁止为了某个模块改 Engine 业务逻辑。**
+
+---
+
+## 4. Contracts（架构地基，必须稳定）
+
+### 4.1 Task
+
+系统只认两种任务：
+
+### AtomicTask
+
+用于评测单一能力
+包含：
+
+* id / name / type
+* input
+* expected
+* context
+* metadata
+* extensions（模块自定义字段必须放这里）
+
+---
+
+### ScenarioTask
+
+用于评测多能力组合链路
+
+* steps = 多个 AtomicTask
+* 显式 input_map（上一步如何注入下一步）
+* 支持 final / step / global 级别评估
+
+---
+
+### 4.2 RunRecord（Trace 是一等公民）
+
+必须记录：
+
+* status / output
+* latency / tokens / cost
+* tool_calls
+* trace events
+* error（必须能定位 step）
+* steps summary（Scenario）
+
+---
+
+### 4.3 ScoreRecord
+
+* metric
+* value
+* target：final / global / step:<name>
+* evidence（解释 / 片段 / 对齐数据）
+
+---
+
+## 5. 组合能力（Scenario）规则（不可妥协）
+
+* 多能力测试必须通过 ScenarioTask
+* 严禁模块内硬编码“先 A 再 B”
+* 所有数据流必须显式写在 input_map
+* Trace 必须形成 Step Graph
+* Evaluator 必须能：
+
+  * 只评 final
+  * 评某一步
+  * 评全局过程
+
+---
+
+## 6. P0 重点（第一版只抓闭环）
+
+P0 目标：
+
+> 开发者 10 分钟内跑出一次评测并拿到可复现结果。
+
+### P0 必须有
+
+* Contracts（Task / RunRecord / ScoreRecord）
+* Registry / Plugin 机制
+* Engine CLI 或 API
+* ScenarioRunner
+* 内置评估器：
+
+  * 分类：accuracy / F1
+  * 生成：schema/断言 + latency
+* 最小 A/B 对比能力
+
+### P0 明确不做
+
+* 大而全 UI
+* 多租户 / 权限系统
+* 分布式队列 / Kafka
+* 全框架适配
+
+---
+
+## 7. 四 LLM 协作范式（强制流程）
+
+### Claude #1 — 架构 / 规划 / 拆 PR
+
+职责：
+
+* 冻结需求与边界
+* 输出：
+
+  * docs/vision.md
+  * docs/architecture.md
+  * PR / Issue 切分
+  * Contracts / OpenAPI 草案
+* 不写业务实现代码
+
+---
+
+### Claude #2 — 后端实现
+
+职责：
+
+* 严格按 Contracts 实现 Engine / Modules / Runners
+* 提供：
+
+  * 单元测试
+  * CLI/API 示例
+  * 示例任务 / 数据集
+* 不修改架构与契约
+
+---
+
+### Gemini — 前端实现
+
+职责：
+
+* 严格按 OpenAPI / Contracts 开发
+* 使用 mock 优先
+* 提供：
+
+  * 最小 UI（Run 列表 / 详情 / 提交）
+  * 错误 / loading / 空状态
+
+---
+
+### Codex — Review / 修 Bug / 合并门禁
+
+职责：
+
+* 审查：
+
+  * 契约一致性
+  * Trace / 错误处理
+  * 测试覆盖
+  * 架构侵入风险
+* 修 bug
+* 给出 PASS / FAIL + 必改项
+
+---
+
+## 8. 标准开发节奏（8 步循环）
+
+1. 你给 Claude #1 需求卡
+2. Claude #1 输出 PR/Issue + Contracts
+3. 冻结文档与 Issue
+4. Claude #2 / Gemini 并行开发
+5. Codex Review
+6. Codex 修 Bug
+7. 你验收
+8. 打 Tag / 进入下一轮
+
+---
+
+## 9. PR 铁律（不满足不合并）
+
+每个 PR 必须包含：
+
+* Issue 链接
+* 契约影响说明
+* 单元测试 / 集成测试
+* 示例任务或示例命令
+* 回滚方案
+* 文档更新
+
+---
+
+## 10. 架构三条红线
+
+1. Engine 不懂业务
+2. Trace 是一等公民
+3. 扩展靠注册与契约，不靠改 Core
+
+---
+
+## 11. 变更规则
+
+任何修改以下内容必须单独开 Issue：
+
+* Task Schema
+* RunRecord Schema
+* ScoreRecord Schema
+* Pipeline 顺序
+* Scenario 机制
+
+---
+
+## 12. 最终目标状态
+
+当项目成熟时：
+
+* 新能力 = 新模块目录
+* 新实现 = 新 Runner 文件
+* 新指标 = 新 Evaluator 文件
+* 不需要修改 Engine
+* 不需要改已有模块
+
+---
+
+# 结束语（给所有 LLM 的共识）
+
+本项目的价值不在“多写功能”，而在：
+**可复现、可对比、可解释、可扩展的 Agent 工程验证体系。**
+
+所有设计与代码都必须服务于这个目标。
+
+---
+
+如果你愿意，我可以再给你一份**精简版 `llm.short.txt`**（给模型快速加载用，1/3 长度但保留关键约束），适合你在 token 紧张或快速启动时用。
