@@ -113,3 +113,92 @@ model TestResult {
 
   @@map("test_results")
 }
+
+// ============================================
+// 新架构表 (Phase 3+4)
+// ============================================
+
+// 运行记录表 - 对应 RunRecord 契约
+model RunRecord {
+  id            String   @id @default(cuid())
+  taskId        String   // 任务 ID
+  taskType      String   // atomic | scenario
+
+  // 执行状态
+  status        String   // pending | running | completed | failed
+
+  // 结果
+  output        String?  // JSON 字符串
+  errorMessage  String?  // 错误消息
+  errorStep     String?  // 失败的步骤（Scenario 专用）
+  errorStack    String?  // 错误堆栈
+
+  // 性能指标
+  latency       Int      // 执行耗时（毫秒）
+  tokens        Int?     // Token 消耗
+  cost          Float?   // 成本（美元）
+
+  // Trace（存储为 JSON 数组）
+  trace         String   // TraceEvent[] 的 JSON 字符串
+
+  // Scenario 专用
+  steps         String?  // StepSummary[] 的 JSON 字符串
+
+  // 时间戳
+  startedAt     DateTime
+  completedAt   DateTime?
+
+  // Provenance（可复现性保证）
+  runnerId      String   // 使用的 Runner ID
+  runnerVersion String   // Runner 版本
+  config        String   // 运行时配置（JSON 字符串）
+
+  // 关联
+  scores        ScoreRecord[]
+
+  createdAt     DateTime @default(now())
+
+  @@index([taskId])
+  @@index([status])
+  @@index([taskType])
+  @@index([runnerId])
+  @@index([taskId, status])
+  @@index([taskType, status])
+  @@index([startedAt(sort: Desc)])
+  @@map("run_records")
+}
+
+// 评分记录表 - 对应 ScoreRecord 契约
+model ScoreRecord {
+  id            String   @id @default(cuid())
+  runId         String   // 关联的 RunRecord ID
+  run           RunRecord @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  // 指标
+  metric        String   // 指标名称
+  valueNumber   Float?   // 数值类型的值
+  valueBoolean  Boolean? // 布尔类型的值
+  valueString   String?  // 字符串类型的值
+
+  // 评估目标
+  target        String   // final | global | step:xxx
+
+  // 证据（可解释性）
+  explanation   String?  // 评分解释
+  snippets      String?  // 相关片段（JSON 数组）
+  alignment     String?  // 对齐数据（JSON 对象）
+
+  // 评估器信息
+  evaluatorId   String
+
+  // 时间戳
+  createdAt     DateTime @default(now())
+
+  @@index([runId])
+  @@index([metric])
+  @@index([evaluatorId])
+  @@index([runId, metric])
+  @@index([runId, target])
+  @@map("score_records")
+}
+

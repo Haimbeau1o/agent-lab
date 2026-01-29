@@ -7,6 +7,7 @@ import { tasksRouter } from './api/tasks/index.js'
 import { datasetsRouter } from './api/datasets/index.js'
 import { testRunsRouter } from './api/test-runs/index.js'
 import { settingsRouter } from './api/settings/index.js'
+import evalRouter from './api/eval/index.js'
 import { logger } from './lib/utils/logger.js'
 
 dotenv.config()
@@ -50,10 +51,11 @@ app.get('/health', (req, res) => {
 })
 
 // API Routes
+app.use('/api/eval', evalRouter)  // 新的评测 API
 app.use('/api/agents', agentsRouter)
 app.use('/api/tasks', tasksRouter)
 app.use('/api/datasets', datasetsRouter)
-app.use('/api/test-runs', testRunsRouter)
+app.use('/api/test-runs', testRunsRouter)  // 旧 API（待废弃）
 app.use('/api/settings', settingsRouter)
 
 // Error handling middleware

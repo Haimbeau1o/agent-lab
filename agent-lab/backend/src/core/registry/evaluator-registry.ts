@@ -60,6 +60,25 @@ export class EvaluatorRegistry {
   }
 
   /**
+   * 列出所有已注册的 Evaluator (别名)
+   * @returns Evaluator 数组（不可变副本）
+   */
+  listAll(): Evaluator[] {
+    return this.list()
+  }
+
+  /**
+   * 根据指标查找 Evaluators
+   * @param metric - 指标名称
+   * @returns 支持该指标的 Evaluator 数组
+   */
+  findByMetric(metric: string): Evaluator[] {
+    return Array.from(this.evaluators.values()).filter(
+      e => e.metrics.includes(metric)
+    )
+  }
+
+  /**
    * 检查是否已注册指定 id 的 Evaluator
    * @param id - Evaluator ID
    * @returns 是否已注册
