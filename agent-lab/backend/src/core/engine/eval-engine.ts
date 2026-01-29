@@ -5,7 +5,7 @@
  * 不理解业务逻辑，只提供通用评测基础设施
  */
 
-import type { AtomicTask } from '../contracts/task.js'
+import type { AtomicTask, ScenarioTask } from '../contracts/task.js'
 import type { RunRecord } from '../contracts/run-record.js'
 import type { ScoreRecord } from '../contracts/score-record.js'
 import type { Runner } from '../contracts/runner.js'
@@ -13,6 +13,7 @@ import type { Evaluator } from '../contracts/evaluator.js'
 import type { RunnerRegistry } from '../registry/runner-registry.js'
 import type { EvaluatorRegistry } from '../registry/evaluator-registry.js'
 import type { Storage } from './storage.js'
+import { ScenarioExecutor } from './scenario-executor.js'
 
 /**
  * EvalEngine 配置
@@ -38,11 +39,13 @@ export class EvalEngine {
   private readonly runnerRegistry: RunnerRegistry
   private readonly evaluatorRegistry: EvaluatorRegistry
   private readonly storage: Storage
+  private readonly scenarioExecutor: ScenarioExecutor
 
   constructor(config: EvalEngineConfig) {
     this.runnerRegistry = config.runnerRegistry
     this.evaluatorRegistry = config.evaluatorRegistry
     this.storage = config.storage
+    this.scenarioExecutor = new ScenarioExecutor()
   }
 
   /**
@@ -137,6 +140,71 @@ export class EvalEngine {
     }
 
     return results
+  }
+
+  /**
+   * 执行 ScenarioTask 评测
+   *
+   * 固定 Pipeline:
+   * 1. Execute - 通过 ScenarioExecutor 执行场景
+   * 2. Trace - ScenarioExecutor 自动记录 trace
+   * 3. Evaluate - 通过 Evaluators 评估结果（支持 step-level 和 global-level）
+   * 4. Store - 保存 RunRecord 和 ScoreRecords
+   *
+   * @param scenario - 场景任务
+   * @param config - 每个步骤的配置（stepId -> { runnerId, ...config }）
+   * @param evaluatorIds - Evaluator IDs（可选）
+   * @returns 评测结果
+   */
+  async evaluateScenario(
+    scenario: ScenarioTask,
+    config: Record<string, { runnerId: string; [key: string]: unknown }>,
+    evaluatorIds?: string[]
+  ): Promise<EvalResult> {
+    // 1. Execute - 执行场景
+    const runRecord = await this.scenarioExecutor.execute(
+      scenario,
+      this.runnerRegistry,
+      config
+    )
+
+    // 2. Trace - 已由 ScenarioExecutor 自动记录
+
+    // 3. Evaluate - 评估结果
+    const evaluators = this.getEvaluators(evaluatorIds)
+    const allScores: ScoreRecord[] = []
+
+    // 对整个场景进行评估（global-level）
+    for (const evaluator of evaluators) {
+      try {
+        // 将 ScenarioTask 转换为 AtomicTask 格式用于评估
+        // 评估器会根据 runRecord.taskType 判断是否为场景
+        const pseudoTask: AtomicTask = {
+          id: scenario.id,
+          name: scenario.name,
+          type: 'scenario', // 特殊类型
+          input: scenario.metadata,
+          metadata: {}
+        }
+
+        const scores = await evaluator.evaluate(runRecord, pseudoTask)
+        allScores.push(...scores)
+      } catch (error) {
+        // 评估失败不应该影响整个流程
+        console.error(`Evaluator ${evaluator.id} failed:`, error)
+      }
+    }
+
+    // 4. Store - 保存结果
+    await this.storage.saveRun(runRecord)
+    if (allScores.length > 0) {
+      await this.storage.saveScores(allScores)
+    }
+
+    return {
+      run: runRecord,
+      scores: allScores
+    }
   }
 
   /**

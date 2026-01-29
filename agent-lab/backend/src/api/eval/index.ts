@@ -12,7 +12,7 @@ import { RunnerRegistry } from '../../core/registry/runner-registry.js'
 import { EvaluatorRegistry } from '../../core/registry/evaluator-registry.js'
 import { LLMClient } from '../../lib/llm/client.js'
 import { logger } from '../../lib/utils/logger.js'
-import type { AtomicTask } from '../../core/contracts/task.js'
+import type { AtomicTask, ScenarioTask } from '../../core/contracts/task.js'
 import {
   IntentLLMRunner,
   IntentMetricsEvaluator,
@@ -153,6 +153,76 @@ router.post('/batch', async (req, res) => {
     })
   } catch (error) {
     logger.error('Batch eval failed', { error })
+    res.status(400).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    })
+  }
+})
+
+// ScenarioTask 验证 schema
+const scenarioTaskSchema = z.object({
+  scenario: z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string(),
+    steps: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+      type: z.string(),
+      input: z.unknown(),
+      expected: z.unknown().optional(),
+      context: z.record(z.unknown()).optional(),
+      metadata: z.object({
+        tags: z.array(z.string()).optional(),
+        priority: z.number().optional(),
+        timeout: z.number().optional()
+      }).default({})
+    })),
+    input_map: z.record(z.array(z.object({
+      from: z.string(),
+      to: z.string()
+    }))),
+    metadata: z.record(z.unknown()).default({})
+  }),
+  runnerId: z.string(),
+  config: z.unknown(),
+  evaluatorIds: z.array(z.string()).optional()
+})
+
+/**
+ * POST /api/eval/scenario
+ * 执行场景任务评测
+ */
+router.post('/scenario', async (req, res) => {
+  try {
+    // 验证输入
+    const validated = scenarioTaskSchema.parse(req.body)
+
+    // 构建每个步骤的配置
+    const stepConfigs: Record<string, { runnerId: string; [key: string]: unknown }> = {}
+
+    // 为每个步骤使用相同的 runnerId 和 config
+    for (const step of validated.scenario.steps) {
+      stepConfigs[step.id] = {
+        runnerId: validated.runnerId,
+        ...validated.config as Record<string, unknown>
+      }
+    }
+
+    // 执行场景评测
+    const result = await engine.evaluateScenario(
+      validated.scenario as ScenarioTask,
+      stepConfigs,
+      validated.evaluatorIds
+    )
+
+    res.json({
+      success: true,
+      data: result
+    })
+  } catch (error) {
+    logger.error('Scenario eval failed', { error })
     res.status(400).json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'

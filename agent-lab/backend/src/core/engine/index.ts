@@ -7,6 +7,8 @@
 export { EvalEngine } from './eval-engine.js'
 export type { EvalEngineConfig, EvalResult } from './eval-engine.js'
 
+export { ScenarioExecutor } from './scenario-executor.js'
+
 export { InMemoryStorage } from './storage.js'
 export type { Storage } from './storage.js'
 
