@@ -17,7 +17,7 @@
 
 ---
 
-## `<a id="english"></a>`📖 English Documentation
+## <a id="english"></a>📖 English Documentation
 
 ### 🎯 What is Agent Lab?
 
@@ -400,7 +400,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
 
-## `<a id="chinese"></a>`📖 中文文档
+## <a id="chinese"></a>📖 中文文档
 
 ### 🎯 什么是 Agent Lab？
 
