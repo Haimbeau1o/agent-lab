@@ -17,6 +17,14 @@
 
 ---
 
+## 🖼️ Preview / 界面预览
+
+<div align="center">
+  <img src="./pic/image.png" alt="Agent Lab Dashboard" width="900px" />
+</div>
+
+---
+
 ## <a id="english"></a>📖 English Documentation
 
 ### 🎯 What is Agent Lab?
