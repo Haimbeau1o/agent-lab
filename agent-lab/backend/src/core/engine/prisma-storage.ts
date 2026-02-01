@@ -38,7 +38,15 @@ export class PrismaStorage implements Storage {
         completedAt: run.completedAt ?? null,
         runnerId: run.provenance.runnerId,
         runnerVersion: run.provenance.runnerVersion,
-        config: JSON.stringify(run.provenance.config)
+        config: JSON.stringify(run.provenance.config),
+        configHash: run.provenance.configHash ?? null,
+        runFingerprint: run.provenance.runFingerprint ?? null,
+        configSnapshot: run.provenance.configSnapshot
+          ? JSON.stringify(run.provenance.configSnapshot)
+          : null,
+        overrides: run.provenance.overrides ? JSON.stringify(run.provenance.overrides) : null,
+        artifacts: run.artifacts ? JSON.stringify(run.artifacts) : null,
+        reports: run.reports ? JSON.stringify(run.reports) : null
       }
     })
   }
@@ -153,6 +161,12 @@ export class PrismaStorage implements Storage {
       runnerId: string
       runnerVersion: string
       config: string
+      configHash: string | null
+      runFingerprint: string | null
+      configSnapshot: string | null
+      overrides: string | null
+      artifacts: string | null
+      reports: string | null
     } = record
 
     return {
@@ -180,8 +194,16 @@ export class PrismaStorage implements Storage {
       provenance: {
         runnerId: typedRecord.runnerId,
         runnerVersion: typedRecord.runnerVersion,
-        config: JSON.parse(typedRecord.config)
-      }
+        config: JSON.parse(typedRecord.config),
+        configHash: typedRecord.configHash ?? undefined,
+        runFingerprint: typedRecord.runFingerprint ?? undefined,
+        configSnapshot: typedRecord.configSnapshot
+          ? JSON.parse(typedRecord.configSnapshot)
+          : undefined,
+        overrides: typedRecord.overrides ? JSON.parse(typedRecord.overrides) : undefined
+      },
+      artifacts: typedRecord.artifacts ? JSON.parse(typedRecord.artifacts) : undefined,
+      reports: typedRecord.reports ? JSON.parse(typedRecord.reports) : undefined
     }
   }
 

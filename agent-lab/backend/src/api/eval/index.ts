@@ -10,6 +10,7 @@ import { PrismaClient } from '@prisma/client'
 import { EvalEngine, PrismaStorage } from '../../core/engine/index.js'
 import { RunnerRegistry } from '../../core/registry/runner-registry.js'
 import { EvaluatorRegistry } from '../../core/registry/evaluator-registry.js'
+import { ReporterRegistry } from '../../core/registry/reporter-registry.js'
 import { LLMClient } from '../../lib/llm/client.js'
 import { logger } from '../../lib/utils/logger.js'
 import type { AtomicTask, ScenarioTask } from '../../core/contracts/task.js'
@@ -19,7 +20,10 @@ import {
   DialogueLLMRunner,
   DialogueMetricsEvaluator,
   MemoryLLMRunner,
-  MemoryMetricsEvaluator
+  MemoryMetricsEvaluator,
+  RagMockRunner,
+  RagMetricsEvaluator,
+  RagEvidenceReporter
 } from '../../modules/index.js'
 
 const router = express.Router()
@@ -31,6 +35,7 @@ const prisma = new PrismaClient()
 const storage = new PrismaStorage(prisma)
 const runnerRegistry = new RunnerRegistry()
 const evaluatorRegistry = new EvaluatorRegistry()
+const reporterRegistry = new ReporterRegistry()
 
 // 初始化 LLM Client
 const llmClient = new LLMClient({
@@ -49,16 +54,22 @@ const llmClient = new LLMClient({
 runnerRegistry.register(new IntentLLMRunner(llmClient))
 runnerRegistry.register(new DialogueLLMRunner(llmClient))
 runnerRegistry.register(new MemoryLLMRunner(llmClient))
+runnerRegistry.register(new RagMockRunner())
 
 // 注册所有 Evaluators
 evaluatorRegistry.register(new IntentMetricsEvaluator())
 evaluatorRegistry.register(new DialogueMetricsEvaluator())
 evaluatorRegistry.register(new MemoryMetricsEvaluator())
+evaluatorRegistry.register(new RagMetricsEvaluator())
+
+// 注册所有 Reporters
+reporterRegistry.register(new RagEvidenceReporter())
 
 // 创建 Engine
 const engine = new EvalEngine({
   runnerRegistry,
   evaluatorRegistry,
+  reporterRegistry,
   storage
 })
 

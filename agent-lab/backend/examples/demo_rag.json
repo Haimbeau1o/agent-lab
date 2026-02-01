@@ -1,0 +1,5 @@
+[
+  { "id": "d1", "text": "BM25 is a ranking function used in information retrieval." },
+  { "id": "d2", "text": "Large language models can hallucinate without evidence." },
+  { "id": "d3", "text": "RAG systems retrieve documents before generating answers." }
+]

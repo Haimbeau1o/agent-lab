@@ -171,6 +171,13 @@ describe('EvalEngine', () => {
       expect(result.scores.every(s => s.evaluatorId === 'mock.evaluator')).toBe(true)
     })
 
+    it('adds configHash and runFingerprint to run provenance', async () => {
+      const result = await engine.evaluateTask(task, 'mock.runner', { mode: 'test' })
+
+      expect(result.run.provenance.configHash).toBeDefined()
+      expect(result.run.provenance.runFingerprint).toBeDefined()
+    })
+
     it('should handle evaluator failures gracefully', async () => {
       // 注册一个会失败的 evaluator
       class FailingEvaluator implements Evaluator {

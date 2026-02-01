@@ -29,7 +29,9 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "zod": "^3.24.1",
-    "openai": "^4.77.3"
+    "openai": "^4.77.3",
+    "wink-bm25-text-search": "^3.0.1",
+    "wink-tokenizer": "^5.0.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
