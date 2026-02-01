@@ -20,7 +20,10 @@ import {
   DialogueLLMRunner,
   DialogueMetricsEvaluator,
   MemoryLLMRunner,
-  MemoryMetricsEvaluator
+  MemoryMetricsEvaluator,
+  RagMockRunner,
+  RagMetricsEvaluator,
+  RagEvidenceReporter
 } from '../../modules/index.js'
 
 const router = express.Router()
@@ -51,11 +54,16 @@ const llmClient = new LLMClient({
 runnerRegistry.register(new IntentLLMRunner(llmClient))
 runnerRegistry.register(new DialogueLLMRunner(llmClient))
 runnerRegistry.register(new MemoryLLMRunner(llmClient))
+runnerRegistry.register(new RagMockRunner())
 
 // 注册所有 Evaluators
 evaluatorRegistry.register(new IntentMetricsEvaluator())
 evaluatorRegistry.register(new DialogueMetricsEvaluator())
 evaluatorRegistry.register(new MemoryMetricsEvaluator())
+evaluatorRegistry.register(new RagMetricsEvaluator())
+
+// 注册所有 Reporters
+reporterRegistry.register(new RagEvidenceReporter())
 
 // 创建 Engine
 const engine = new EvalEngine({
