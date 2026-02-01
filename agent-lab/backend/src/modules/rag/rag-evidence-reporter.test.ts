@@ -112,4 +112,44 @@ describe('RagEvidenceReporter', () => {
       attempted: ['strict:proper_noun', 'strict:number', 'semantic:fallback']
     })
   })
+
+  it('computes citation and hallucination metrics', async () => {
+    const reporter = new RagEvidenceReporter()
+    const reports = await reporter.run('run-5', {
+      artifacts: [
+        retrievedArtifact(['c1']),
+        citationsArtifact([
+          { sentenceId: 's5', text: 'Answer mentions c1', citations: [{ chunkId: 'c1' }] },
+          { sentenceId: 's6', text: 'Unmatched claim', citations: [{ chunkId: 'c1' }] },
+          { sentenceId: 's7', text: 'No citations', citations: [] }
+        ])
+      ]
+    })
+
+    const payload = reports[0].payload as any
+
+    expect(payload.metrics).toMatchObject({
+      citation_precision: 0.5,
+      supported_sentence_rate: 1 / 3,
+      hallucination_rate: 2 / 3,
+      missing_evidence_rate: 1 / 3,
+      wrong_evidence_rate: 1 / 3
+    })
+  })
+
+  it('computes failure taxonomy with retrieval_attempted', async () => {
+    const reporter = new RagEvidenceReporter()
+    const reports = await reporter.run('run-6', {
+      artifacts: [
+        retrievedArtifact([]),
+        citationsArtifact([
+          { sentenceId: 's8', text: 'No citations', citations: [] }
+        ])
+      ]
+    })
+
+    const payload = reports[0].payload as any
+
+    expect(payload.taxonomy).toBe('retrieval_failed')
+  })
 })

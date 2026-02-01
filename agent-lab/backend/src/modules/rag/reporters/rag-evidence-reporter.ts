@@ -39,6 +39,16 @@ const strictMatch = (sentence: string, chunkText: string): { matched: boolean; a
   return { matched: false, attempted }
 }
 
+type RagEvidenceMetrics = {
+  citation_precision: number
+  supported_sentence_rate: number
+  hallucination_rate: number
+  missing_evidence_rate: number
+  wrong_evidence_rate: number
+}
+
+type RagFailureTaxonomy = 'retrieval_failed' | 'evidence_link_failed' | 'generation_failed' | 'unknown'
+
 export class RagEvidenceReporter implements Reporter {
   id = 'rag.evidence'
   types = ['rag.evidence']
@@ -118,14 +128,39 @@ export class RagEvidenceReporter implements Reporter {
       0
     )
 
-    const payload: RagEvidenceReportPayload = {
+    const unlinkedCount = unlinkedSentences.length
+    const unsupportedCount = unsupported.length
+    const supportedCount = supported.length
+
+    const validCitations = new Set(supported.map(link => link.chunkId)).size
+
+    const metrics: RagEvidenceMetrics = {
+      citation_precision: totalCitations === 0 ? 0 : validCitations / totalCitations,
+      supported_sentence_rate: totalSentences === 0 ? 0 : supportedCount / totalSentences,
+      hallucination_rate: totalSentences === 0 ? 0 : (unlinkedCount + unsupportedCount) / totalSentences,
+      missing_evidence_rate: totalSentences === 0 ? 0 : unlinkedCount / totalSentences,
+      wrong_evidence_rate: totalSentences === 0 ? 0 : unsupportedCount / totalSentences
+    }
+
+    const retrievalAttempted = retrievedArtifact?.producedByStepId === 'retrieve'
+    let taxonomy: RagFailureTaxonomy = 'unknown'
+
+    if (retrievalAttempted && retrievedChunks.length === 0) {
+      taxonomy = 'retrieval_failed'
+    } else if (supported.length === 0 && sentencesWithCitations > 0) {
+      taxonomy = 'evidence_link_failed'
+    }
+
+    const payload: RagEvidenceReportPayload & { metrics: RagEvidenceMetrics; taxonomy: RagFailureTaxonomy } = {
       totalSentences,
       sentencesWithCitations,
       totalCitations,
       sentences,
       supported,
       unsupported,
-      unlinkedSentences
+      unlinkedSentences,
+      metrics,
+      taxonomy
     }
 
     return [
