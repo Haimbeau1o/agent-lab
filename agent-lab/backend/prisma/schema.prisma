@@ -152,6 +152,14 @@ model RunRecord {
   runnerId      String   // 使用的 Runner ID
   runnerVersion String   // Runner 版本
   config        String   // 运行时配置（JSON 字符串）
+  configHash     String?
+  runFingerprint String?
+  configSnapshot String?
+  overrides      String?
+
+  // Artifacts & Reports
+  artifacts     String?
+  reports       String?
 
   // 关联
   scores        ScoreRecord[]
@@ -201,4 +209,3 @@ model ScoreRecord {
   @@index([runId, target])
   @@map("score_records")
 }
-
