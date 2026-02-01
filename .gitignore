@@ -31,6 +31,9 @@ Thumbs.db
 *.tmp
 *.temp
 
+# Git worktrees
+.worktrees/
+
 # Prisma
 agent-lab/backend/prisma/dev.db
 agent-lab/backend/prisma/dev.db-journal
