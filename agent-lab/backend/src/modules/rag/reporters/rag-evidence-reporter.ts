@@ -7,6 +7,38 @@ import type {
   RagUnsupportedLink
 } from '../schemas.js'
 
+const properNounPattern = /[A-Z][A-Za-z0-9-]+/g
+const numberPattern = /\d+(?:\.\d+)?%?/g
+
+const extractTokens = (text: string, pattern: RegExp): string[] => {
+  const matches = text.match(pattern)
+  return matches ? matches.map(match => match.toLowerCase()) : []
+}
+
+const hasOverlap = (left: string[], right: string[]): boolean => {
+  const rightSet = new Set(right)
+  return left.some(token => rightSet.has(token))
+}
+
+const strictMatch = (sentence: string, chunkText: string): { matched: boolean; attempted: string[] } => {
+  const attempted = ['strict:proper_noun', 'strict:number']
+  const sentenceProperNouns = extractTokens(sentence, properNounPattern)
+  const chunkProperNouns = extractTokens(chunkText, properNounPattern)
+
+  if (hasOverlap(sentenceProperNouns, chunkProperNouns)) {
+    return { matched: true, attempted }
+  }
+
+  const sentenceNumbers = extractTokens(sentence, numberPattern)
+  const chunkNumbers = extractTokens(chunkText, numberPattern)
+
+  if (hasOverlap(sentenceNumbers, chunkNumbers)) {
+    return { matched: true, attempted }
+  }
+
+  return { matched: false, attempted }
+}
+
 export class RagEvidenceReporter implements Reporter {
   id = 'rag.evidence'
   types = ['rag.evidence']
@@ -19,10 +51,10 @@ export class RagEvidenceReporter implements Reporter {
     const retrievedChunks = Array.isArray(retrievedArtifact?.payload?.chunks)
       ? retrievedArtifact?.payload?.chunks
       : []
-    const retrievedChunkIds = new Set(
+    const retrievedChunkMap = new Map(
       retrievedChunks
-        .map((chunk: any) => chunk?.id)
-        .filter((id: unknown): id is string => typeof id === 'string')
+        .filter((chunk: any) => chunk && typeof chunk.id === 'string')
+        .map((chunk: any) => [chunk.id as string, chunk])
     )
 
     const sentences: RagSentence[] = Array.isArray(citationsArtifact?.payload?.sentences)
@@ -41,24 +73,40 @@ export class RagEvidenceReporter implements Reporter {
       }
 
       for (const citation of citations) {
-        if (!retrievedChunkIds.has(citation.chunkId)) {
+        const chunk = retrievedChunkMap.get(citation.chunkId)
+        if (!chunk) {
           unsupported.push({
             sentenceId: sentence.sentenceId,
             chunkId: citation.chunkId,
             producedByStepId: citationsArtifact?.producedByStepId ?? 'generate',
             method: 'strict',
-            attempted: ['strict:proper_noun'],
+            attempted: ['strict:proper_noun', 'strict:number'],
             reason: 'missing_chunk'
           })
           continue
         }
 
-        supported.push({
+        const chunkText = typeof chunk.text === 'string' ? chunk.text : ''
+        const strict = strictMatch(sentence.text, chunkText)
+
+        if (strict.matched) {
+          supported.push({
+            sentenceId: sentence.sentenceId,
+            chunkId: citation.chunkId,
+            producedByStepId: citationsArtifact?.producedByStepId ?? 'generate',
+            method: 'strict',
+            attempted: strict.attempted
+          })
+          continue
+        }
+
+        unsupported.push({
           sentenceId: sentence.sentenceId,
           chunkId: citation.chunkId,
           producedByStepId: citationsArtifact?.producedByStepId ?? 'generate',
-          method: 'strict',
-          attempted: ['strict:proper_noun']
+          method: 'semantic',
+          attempted: [...strict.attempted, 'semantic:fallback'],
+          reason: 'no_support'
         })
       }
     }

@@ -22,7 +22,7 @@ describe('RagEvidenceReporter', () => {
       artifacts: [
         retrievedArtifact(['c1']),
         citationsArtifact([
-          { sentenceId: 's1', text: 'Answer sentence', citations: [{ chunkId: 'c1' }] }
+          { sentenceId: 's1', text: 'Answer mentions c1', citations: [{ chunkId: 'c1' }] }
         ])
       ]
     })
@@ -39,7 +39,8 @@ describe('RagEvidenceReporter', () => {
       sentenceId: 's1',
       chunkId: 'c1',
       producedByStepId: 'generate',
-      method: 'strict'
+      method: 'strict',
+      attempted: ['strict:proper_noun', 'strict:number']
     })
   })
 
@@ -61,7 +62,8 @@ describe('RagEvidenceReporter', () => {
     expect(payload.unsupported[0]).toMatchObject({
       sentenceId: 's2',
       chunkId: 'c2',
-      reason: 'missing_chunk'
+      reason: 'missing_chunk',
+      attempted: ['strict:proper_noun', 'strict:number']
     })
   })
 
@@ -85,6 +87,29 @@ describe('RagEvidenceReporter', () => {
     expect(payload.unlinkedSentences[0]).toMatchObject({
       sentenceId: 's3',
       text: 'No citations'
+    })
+  })
+
+  it('marks citations with known chunk but no support as unsupported with no_support', async () => {
+    const reporter = new RagEvidenceReporter()
+    const reports = await reporter.run('run-4', {
+      artifacts: [
+        retrievedArtifact(['c1']),
+        citationsArtifact([
+          { sentenceId: 's4', text: 'Unmatched claim', citations: [{ chunkId: 'c1' }] }
+        ])
+      ]
+    })
+
+    const payload = reports[0].payload as any
+
+    expect(payload.supported).toHaveLength(0)
+    expect(payload.unsupported).toHaveLength(1)
+    expect(payload.unsupported[0]).toMatchObject({
+      sentenceId: 's4',
+      chunkId: 'c1',
+      reason: 'no_support',
+      attempted: ['strict:proper_noun', 'strict:number', 'semantic:fallback']
     })
   })
 })
