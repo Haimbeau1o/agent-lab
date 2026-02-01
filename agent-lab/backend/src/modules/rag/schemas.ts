@@ -1,6 +1,6 @@
 export const RagArtifactSchemas = {
   retrieved: { id: 'rag.retrieved', name: 'RetrievedChunks', version: '1.0.0' },
-  citations: { id: 'rag.citations', name: 'FinalCitations', version: '1.0.0' }
+  generated: { id: 'rag.generated', name: 'GeneratedAnswer', version: '1.0.0' }
 }
 
 export type RagCitationRef = {
@@ -11,6 +11,13 @@ export type RagSentence = {
   sentenceId: string
   text: string
   citations?: RagCitationRef[]
+}
+
+export type RagGeneratedOutput = {
+  answer: string
+  sentences: RagSentence[]
+  generatorType: 'template' | 'llm'
+  sourcesUsed: string[]
 }
 
 export type RagEvidenceLink = {

@@ -4,15 +4,20 @@ import { RagEvidenceReporter } from './reporters/rag-evidence-reporter.js'
 const retrievedArtifact = (chunkIds: string[]) => ({
   schemaId: 'rag.retrieved',
   producedByStepId: 'retrieve',
-  payload: { chunks: chunkIds.map(id => ({ id, text: `chunk ${id}` })) }
+  payload: { chunks: chunkIds.map(id => ({ chunkId: id, text: `chunk ${id}` })) }
 })
 
-const citationsArtifact = (
+const generatedArtifact = (
   sentences: Array<{ sentenceId: string; text: string; citations?: Array<{ chunkId: string }> }>
 ) => ({
-  schemaId: 'rag.citations',
+  schemaId: 'rag.generated',
   producedByStepId: 'generate',
-  payload: { sentences }
+  payload: {
+    answer: sentences.map(sentence => sentence.text).join(' '),
+    sentences,
+    generatorType: 'template',
+    sourcesUsed: Array.from(new Set(sentences.flatMap(sentence => (sentence.citations ?? []).map(c => c.chunkId))))
+  }
 })
 
 describe('RagEvidenceReporter', () => {
@@ -21,7 +26,7 @@ describe('RagEvidenceReporter', () => {
     const reports = await reporter.run('run-1', {
       artifacts: [
         retrievedArtifact(['c1']),
-        citationsArtifact([
+        generatedArtifact([
           { sentenceId: 's1', text: 'Answer mentions c1', citations: [{ chunkId: 'c1' }] }
         ])
       ]
@@ -49,7 +54,7 @@ describe('RagEvidenceReporter', () => {
     const reports = await reporter.run('run-2', {
       artifacts: [
         retrievedArtifact(['c1']),
-        citationsArtifact([
+        generatedArtifact([
           { sentenceId: 's2', text: 'Another sentence', citations: [{ chunkId: 'c2' }] }
         ])
       ]
@@ -72,7 +77,7 @@ describe('RagEvidenceReporter', () => {
     const reports = await reporter.run('run-3', {
       artifacts: [
         retrievedArtifact(['c1']),
-        citationsArtifact([
+        generatedArtifact([
           { sentenceId: 's3', text: 'No citations', citations: [] }
         ])
       ]
@@ -95,7 +100,7 @@ describe('RagEvidenceReporter', () => {
     const reports = await reporter.run('run-4', {
       artifacts: [
         retrievedArtifact(['c1']),
-        citationsArtifact([
+        generatedArtifact([
           { sentenceId: 's4', text: 'Unmatched claim', citations: [{ chunkId: 'c1' }] }
         ])
       ]
@@ -118,7 +123,7 @@ describe('RagEvidenceReporter', () => {
     const reports = await reporter.run('run-5', {
       artifacts: [
         retrievedArtifact(['c1']),
-        citationsArtifact([
+        generatedArtifact([
           { sentenceId: 's5', text: 'Answer mentions c1', citations: [{ chunkId: 'c1' }] },
           { sentenceId: 's6', text: 'Unmatched claim', citations: [{ chunkId: 'c1' }] },
           { sentenceId: 's7', text: 'No citations', citations: [] }
@@ -142,7 +147,7 @@ describe('RagEvidenceReporter', () => {
     const reports = await reporter.run('run-6', {
       artifacts: [
         retrievedArtifact([]),
-        citationsArtifact([
+        generatedArtifact([
           { sentenceId: 's8', text: 'No citations', citations: [] }
         ])
       ]
@@ -158,7 +163,7 @@ describe('RagEvidenceReporter', () => {
     const reports = await reporter.run('run-7', {
       artifacts: [
         retrievedArtifact(['c1', 'c2']),
-        citationsArtifact([
+        generatedArtifact([
           { sentenceId: 's9', text: 'Answer mentions c1 and c2', citations: [{ chunkId: 'c1' }, { chunkId: 'c2' }] }
         ])
       ]
@@ -175,7 +180,7 @@ describe('RagEvidenceReporter', () => {
     const reports = await reporter.run('run-8', {
       artifacts: [
         retrievedArtifact(['c1']),
-        citationsArtifact([
+        generatedArtifact([
           { sentenceId: 's10', text: 'Sentence text', citations: [{ chunkId: 'c1' }] }
         ])
       ]

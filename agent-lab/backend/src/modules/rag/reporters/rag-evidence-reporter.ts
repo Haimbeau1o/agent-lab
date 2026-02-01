@@ -56,19 +56,19 @@ export class RagEvidenceReporter implements Reporter {
   async run(runId: string, context: { artifacts?: ArtifactRecord[] }): Promise<ReportRecord[]> {
     const artifacts = context.artifacts ?? []
     const retrievedArtifact = artifacts.find(a => a.schemaId === 'rag.retrieved')
-    const citationsArtifact = artifacts.find(a => a.schemaId === 'rag.citations')
+    const generatedArtifact = artifacts.find(a => a.schemaId === 'rag.generated')
 
     const retrievedChunks = Array.isArray(retrievedArtifact?.payload?.chunks)
       ? retrievedArtifact?.payload?.chunks
       : []
     const retrievedChunkMap = new Map(
       retrievedChunks
-        .filter((chunk: any) => chunk && typeof chunk.id === 'string')
-        .map((chunk: any) => [chunk.id as string, chunk])
+        .filter((chunk: any) => chunk && typeof chunk.chunkId === 'string')
+        .map((chunk: any) => [chunk.chunkId as string, chunk])
     )
 
-    const sentences: RagSentence[] = Array.isArray(citationsArtifact?.payload?.sentences)
-      ? (citationsArtifact?.payload?.sentences as RagSentence[])
+    const sentences: RagSentence[] = Array.isArray(generatedArtifact?.payload?.sentences)
+      ? (generatedArtifact?.payload?.sentences as RagSentence[])
       : []
 
     const supported: RagEvidenceLink[] = []
@@ -88,7 +88,7 @@ export class RagEvidenceReporter implements Reporter {
           unsupported.push({
             sentenceId: sentence.sentenceId,
             chunkId: citation.chunkId,
-            producedByStepId: citationsArtifact?.producedByStepId ?? 'generate',
+            producedByStepId: generatedArtifact?.producedByStepId ?? 'generate',
             method: 'strict',
             attempted: ['strict:proper_noun', 'strict:number'],
             reason: 'missing_chunk'
@@ -103,7 +103,7 @@ export class RagEvidenceReporter implements Reporter {
           supported.push({
             sentenceId: sentence.sentenceId,
             chunkId: citation.chunkId,
-            producedByStepId: citationsArtifact?.producedByStepId ?? 'generate',
+            producedByStepId: generatedArtifact?.producedByStepId ?? 'generate',
             method: 'strict',
             attempted: strict.attempted
           })
@@ -113,7 +113,7 @@ export class RagEvidenceReporter implements Reporter {
         unsupported.push({
           sentenceId: sentence.sentenceId,
           chunkId: citation.chunkId,
-          producedByStepId: citationsArtifact?.producedByStepId ?? 'generate',
+          producedByStepId: generatedArtifact?.producedByStepId ?? 'generate',
           method: 'semantic',
           attempted: [...strict.attempted, 'semantic:fallback'],
           reason: 'no_support'

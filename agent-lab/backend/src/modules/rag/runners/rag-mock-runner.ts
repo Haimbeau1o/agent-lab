@@ -9,25 +9,32 @@ export class RagMockRunner implements Runner {
   version = '0.1.0'
 
   async execute(task: AtomicTask): Promise<RunRecord> {
+    const sentences = [
+      { sentenceId: 's1', text: 'ok', citations: [{ chunkId: 'c1' }] }
+    ]
+
+    const output = {
+      answer: 'ok',
+      sentences,
+      generatorType: 'template',
+      sourcesUsed: ['c1']
+    }
+
     return {
       id: randomUUID(),
       taskId: task.id,
       taskType: 'atomic',
       status: 'completed',
-      output: { answer: 'ok' },
+      output,
       metrics: { latency: 1 },
       trace: [],
       artifacts: [
         { schemaId: 'rag.retrieved', producedByStepId: 'retrieve', payload: { chunks: [] } },
-        { schemaId: 'rag.citations', producedByStepId: 'generate', payload: { citations: [] } }
+        { schemaId: 'rag.generated', producedByStepId: 'generate', payload: output }
       ],
       startedAt: new Date(),
       completedAt: new Date(),
-      provenance: {
-        runnerId: this.id,
-        runnerVersion: this.version,
-        config: {}
-      }
+      provenance: { runnerId: this.id, runnerVersion: this.version, config: {} }
     }
   }
 }
