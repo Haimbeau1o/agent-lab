@@ -152,4 +152,39 @@ describe('RagEvidenceReporter', () => {
 
     expect(payload.taxonomy).toBe('retrieval_failed')
   })
+
+  it('counts valid citations by distinct citation references', async () => {
+    const reporter = new RagEvidenceReporter()
+    const reports = await reporter.run('run-7', {
+      artifacts: [
+        retrievedArtifact(['c1', 'c2']),
+        citationsArtifact([
+          { sentenceId: 's9', text: 'Answer mentions c1 and c2', citations: [{ chunkId: 'c1' }, { chunkId: 'c2' }] }
+        ])
+      ]
+    })
+
+    const payload = reports[0].payload as any
+
+    expect(payload.metrics.citation_precision).toBe(1)
+    expect(payload.validCitations).toBe(2)
+  })
+
+  it('includes sentences with text and citations in payload', async () => {
+    const reporter = new RagEvidenceReporter()
+    const reports = await reporter.run('run-8', {
+      artifacts: [
+        retrievedArtifact(['c1']),
+        citationsArtifact([
+          { sentenceId: 's10', text: 'Sentence text', citations: [{ chunkId: 'c1' }] }
+        ])
+      ]
+    })
+
+    const payload = reports[0].payload as any
+
+    expect(payload.sentences).toEqual([
+      { sentenceId: 's10', text: 'Sentence text', citations: [{ chunkId: 'c1' }] }
+    ])
+  })
 })

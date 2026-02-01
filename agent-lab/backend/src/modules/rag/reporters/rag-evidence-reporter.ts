@@ -151,7 +151,11 @@ export class RagEvidenceReporter implements Reporter {
       taxonomy = 'evidence_link_failed'
     }
 
-    const payload: RagEvidenceReportPayload & { metrics: RagEvidenceMetrics; taxonomy: RagFailureTaxonomy } = {
+    const payload: RagEvidenceReportPayload & {
+      metrics: RagEvidenceMetrics
+      taxonomy: RagFailureTaxonomy
+      validCitations: number
+    } = {
       totalSentences,
       sentencesWithCitations,
       totalCitations,
@@ -160,7 +164,8 @@ export class RagEvidenceReporter implements Reporter {
       unsupported,
       unlinkedSentences,
       metrics,
-      taxonomy
+      taxonomy,
+      validCitations
     }
 
     return [
