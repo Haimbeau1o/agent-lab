@@ -10,3 +10,6 @@ export * from './dialogue/index.js'
 
 // Memory Module
 export * from './memory/index.js'
+
+// RAG Module
+export * from './rag/index.js'
