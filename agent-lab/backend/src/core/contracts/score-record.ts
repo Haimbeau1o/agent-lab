@@ -28,6 +28,7 @@ export interface ScoreRecord {
     explanation?: string        // 评分解释
     snippets?: string[]         // 相关片段
     alignment?: Record<string, unknown>  // 对齐数据
+    reportRefs?: string[]       // 关联的报告 ID 列表
   }
 
   // 评估器信息

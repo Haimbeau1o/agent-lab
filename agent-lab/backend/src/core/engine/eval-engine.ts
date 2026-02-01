@@ -14,6 +14,7 @@ import type { RunnerRegistry } from '../registry/runner-registry.js'
 import type { EvaluatorRegistry } from '../registry/evaluator-registry.js'
 import type { Storage } from './storage.js'
 import { ScenarioExecutor } from './scenario-executor.js'
+import { createConfigHash, createRunFingerprint } from '../../lib/utils/config-hash.js'
 
 /**
  * EvalEngine 配置
@@ -83,6 +84,11 @@ export class EvalEngine {
     }
 
     const runRecord = await runner.execute(task, config)
+
+    const configSnapshot = { task, runnerId, config }
+    runRecord.provenance.configSnapshot = configSnapshot
+    runRecord.provenance.configHash = createConfigHash(configSnapshot)
+    runRecord.provenance.runFingerprint = createRunFingerprint(configSnapshot)
 
     // 2. Trace - 已由 Runner 自动记录
 

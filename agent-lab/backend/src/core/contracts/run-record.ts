@@ -73,5 +73,13 @@ export interface RunRecord {
     runnerId: string            // 使用的 Runner ID
     runnerVersion: string       // Runner 版本
     config: Record<string, unknown>  // 运行时配置
+    configHash?: string          // 配置哈希（稳定可复现）
+    runFingerprint?: string      // 运行指纹（包含环境/覆盖）
+    configSnapshot?: Record<string, unknown> // 配置快照
+    overrides?: Record<string, unknown>      // 覆盖项
   }
+
+  // 可观测性与解释性
+  artifacts?: import('./artifact.js').ArtifactRecord[]
+  reports?: import('./report.js').ReportRecord[]
 }
