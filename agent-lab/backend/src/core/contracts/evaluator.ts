@@ -8,6 +8,7 @@
 import type { RunRecord } from './run-record.js'
 import type { AtomicTask } from './task.js'
 import type { ScoreRecord } from './score-record.js'
+import type { ReportRecord } from './report.js'
 
 /**
  * Evaluator - 评估器接口
@@ -25,6 +26,7 @@ export interface Evaluator {
    */
   evaluate(
     run: RunRecord,
-    task: AtomicTask
+    task: AtomicTask,
+    reports?: ReportRecord[]
   ): Promise<ScoreRecord[]>
 }

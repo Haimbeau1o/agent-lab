@@ -12,9 +12,11 @@ import type { Runner } from '../contracts/runner.js'
 import type { Evaluator } from '../contracts/evaluator.js'
 import type { RunnerRegistry } from '../registry/runner-registry.js'
 import type { EvaluatorRegistry } from '../registry/evaluator-registry.js'
+import type { ReporterRegistry } from '../registry/reporter-registry.js'
 import type { Storage } from './storage.js'
 import { ScenarioExecutor } from './scenario-executor.js'
 import { createConfigHash, createRunFingerprint } from '../../lib/utils/config-hash.js'
+import type { ReportRecord } from '../contracts/report.js'
 
 /**
  * EvalEngine 配置
@@ -22,6 +24,7 @@ import { createConfigHash, createRunFingerprint } from '../../lib/utils/config-h
 export interface EvalEngineConfig {
   runnerRegistry: RunnerRegistry
   evaluatorRegistry: EvaluatorRegistry
+  reporterRegistry?: ReporterRegistry
   storage: Storage
 }
 
@@ -39,12 +42,14 @@ export interface EvalResult {
 export class EvalEngine {
   private readonly runnerRegistry: RunnerRegistry
   private readonly evaluatorRegistry: EvaluatorRegistry
+  private readonly reporterRegistry?: ReporterRegistry
   private readonly storage: Storage
   private readonly scenarioExecutor: ScenarioExecutor
 
   constructor(config: EvalEngineConfig) {
     this.runnerRegistry = config.runnerRegistry
     this.evaluatorRegistry = config.evaluatorRegistry
+    this.reporterRegistry = config.reporterRegistry
     this.storage = config.storage
     this.scenarioExecutor = new ScenarioExecutor()
   }
@@ -93,12 +98,15 @@ export class EvalEngine {
     // 2. Trace - 已由 Runner 自动记录
 
     // 3. Evaluate - 获取 Evaluators 并评估
+    const reports = await this.runReporters(runRecord)
+    runRecord.reports = reports
+
     const evaluators = this.getEvaluators(evaluatorIds)
     const allScores: ScoreRecord[] = []
 
     for (const evaluator of evaluators) {
       try {
-        const scores = await evaluator.evaluate(runRecord, task)
+        const scores = await evaluator.evaluate(runRecord, task, reports)
         allScores.push(...scores)
       } catch (error) {
         // 评估失败不应该影响整个流程
@@ -177,6 +185,9 @@ export class EvalEngine {
     // 2. Trace - 已由 ScenarioExecutor 自动记录
 
     // 3. Evaluate - 评估结果
+    const reports = await this.runReporters(runRecord)
+    runRecord.reports = reports
+
     const evaluators = this.getEvaluators(evaluatorIds)
     const allScores: ScoreRecord[] = []
 
@@ -193,7 +204,7 @@ export class EvalEngine {
           metadata: {}
         }
 
-        const scores = await evaluator.evaluate(runRecord, pseudoTask)
+        const scores = await evaluator.evaluate(runRecord, pseudoTask, reports)
         allScores.push(...scores)
       } catch (error) {
         // 评估失败不应该影响整个流程
@@ -332,5 +343,28 @@ export class EvalEngine {
       // 使用所有注册的 Evaluators
       return this.evaluatorRegistry.listAll()
     }
+  }
+
+  private async runReporters(run: RunRecord): Promise<ReportRecord[]> {
+    if (!this.reporterRegistry) return []
+
+    const reporters = this.reporterRegistry.list()
+    if (reporters.length === 0) return []
+
+    const reports: ReportRecord[] = []
+    for (const reporter of reporters) {
+      try {
+        const result = await reporter.run(run.id, {
+          runOutput: run.output,
+          artifacts: run.artifacts,
+          trace: run.trace
+        })
+        reports.push(...result)
+      } catch (error) {
+        console.error(`Reporter ${reporter.id} failed:`, error)
+      }
+    }
+
+    return reports
   }
 }

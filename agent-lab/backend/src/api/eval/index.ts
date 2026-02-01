@@ -10,6 +10,7 @@ import { PrismaClient } from '@prisma/client'
 import { EvalEngine, PrismaStorage } from '../../core/engine/index.js'
 import { RunnerRegistry } from '../../core/registry/runner-registry.js'
 import { EvaluatorRegistry } from '../../core/registry/evaluator-registry.js'
+import { ReporterRegistry } from '../../core/registry/reporter-registry.js'
 import { LLMClient } from '../../lib/llm/client.js'
 import { logger } from '../../lib/utils/logger.js'
 import type { AtomicTask, ScenarioTask } from '../../core/contracts/task.js'
@@ -31,6 +32,7 @@ const prisma = new PrismaClient()
 const storage = new PrismaStorage(prisma)
 const runnerRegistry = new RunnerRegistry()
 const evaluatorRegistry = new EvaluatorRegistry()
+const reporterRegistry = new ReporterRegistry()
 
 // 初始化 LLM Client
 const llmClient = new LLMClient({
@@ -59,6 +61,7 @@ evaluatorRegistry.register(new MemoryMetricsEvaluator())
 const engine = new EvalEngine({
   runnerRegistry,
   evaluatorRegistry,
+  reporterRegistry,
   storage
 })
 
