@@ -56,10 +56,13 @@ export class RagEvidenceReporter implements Reporter {
   async run(runId: string, context: { artifacts?: ArtifactRecord[] }): Promise<ReportRecord[]> {
     const artifacts = context.artifacts ?? []
     const retrievedArtifact = artifacts.find(a => a.schemaId === 'rag.retrieved')
+    const rerankedArtifact = artifacts.find(a => a.schemaId === 'rag.reranked')
     const generatedArtifact = artifacts.find(a => a.schemaId === 'rag.generated')
 
-    const retrievedChunks = Array.isArray(retrievedArtifact?.payload?.chunks)
-      ? retrievedArtifact?.payload?.chunks
+    const chunkArtifact = rerankedArtifact ?? retrievedArtifact
+
+    const retrievedChunks = Array.isArray(chunkArtifact?.payload?.chunks)
+      ? chunkArtifact?.payload?.chunks
       : []
     const retrievedChunkMap = new Map(
       retrievedChunks

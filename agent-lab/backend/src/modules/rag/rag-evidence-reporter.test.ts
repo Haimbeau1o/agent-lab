@@ -7,6 +7,12 @@ const retrievedArtifact = (chunkIds: string[]) => ({
   payload: { chunks: chunkIds.map(id => ({ chunkId: id, text: `chunk ${id}` })) }
 })
 
+const rerankedArtifact = (chunkIds: string[]) => ({
+  schemaId: 'rag.reranked',
+  producedByStepId: 'rerank',
+  payload: { chunks: chunkIds.map(id => ({ chunkId: id, text: `chunk ${id}` })) }
+})
+
 const generatedArtifact = (
   sentences: Array<{ sentenceId: string; text: string; citations?: Array<{ chunkId: string }> }>
 ) => ({
@@ -191,5 +197,23 @@ describe('RagEvidenceReporter', () => {
     expect(payload.sentences).toEqual([
       { sentenceId: 's10', text: 'Sentence text', citations: [{ chunkId: 'c1' }] }
     ])
+  })
+
+  it('prefers rag.reranked chunks when present', async () => {
+    const reporter = new RagEvidenceReporter()
+    const reports = await reporter.run('run-9', {
+      artifacts: [
+        retrievedArtifact(['c1']),
+        rerankedArtifact(['c2']),
+        generatedArtifact([
+          { sentenceId: 's11', text: 'Answer mentions c2', citations: [{ chunkId: 'c2' }] }
+        ])
+      ]
+    })
+
+    const payload = reports[0].payload as any
+
+    expect(payload.supported).toHaveLength(1)
+    expect(payload.supported[0].chunkId).toBe('c2')
   })
 })

@@ -1,5 +1,6 @@
 export const RagArtifactSchemas = {
   retrieved: { id: 'rag.retrieved', name: 'RetrievedChunks', version: '1.0.0' },
+  reranked: { id: 'rag.reranked', name: 'RerankedChunks', version: '1.0.0' },
   generated: { id: 'rag.generated', name: 'GeneratedAnswer', version: '1.0.0' }
 }
 

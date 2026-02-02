@@ -5,6 +5,7 @@ import type { RunRecord, TraceEvent } from '../../../core/contracts/run-record.j
 import type { ArtifactRecord } from '../../../core/contracts/artifact.js'
 import bm25 from 'wink-bm25-text-search'
 import winkTokenizer from 'wink-tokenizer'
+import type { RagGeneratedOutput } from '../schemas.js'
 
 const tokenizer = winkTokenizer().tokenize
 
@@ -17,12 +18,33 @@ type RagRunnerConfig = {
   dataset: { documents: Array<{ id: string; text: string }> }
   retriever: { type: 'bm25'; impl: 'wink'; topK?: number }
   generator: { type: 'template' | 'llm' }
+  reranker?: { enabled: boolean; type: 'simple' }
+}
+
+type RagLLMGeneratorLike = {
+  generate: (input: {
+    query: string
+    retrievedChunks: Array<{ chunkId: string; text: string; score: number; rank: number }>
+  }) => Promise<RagGeneratedOutput>
+}
+
+type RagRerankerLike = {
+  rerank: (chunks: Array<{ chunkId: string; text: string; score: number; rank: number }>) => Array<{
+    chunkId: string
+    text: string
+    score: number
+    rank: number
+  }>
 }
 
 export class RagBm25Runner implements Runner {
   id = 'rag.bm25'
   type = 'rag'
   version = '0.1.0'
+
+  constructor(
+    private readonly options: { llmGenerator?: RagLLMGeneratorLike; reranker?: RagRerankerLike } = {}
+  ) {}
 
   async execute(task: AtomicTask, config: RagRunnerConfig): Promise<RunRecord> {
     const startedAt = new Date()
@@ -87,6 +109,41 @@ export class RagBm25Runner implements Runner {
       }
     })
 
+    let finalChunks = retrievedChunks
+    let rerankedArtifact: ArtifactRecord | undefined
+
+    if (config.reranker?.enabled) {
+      if (!this.options.reranker) {
+        throw new Error('Reranker not provided')
+      }
+
+      trace.push({
+        timestamp: new Date(),
+        level: 'info',
+        step: 'rerank',
+        event: 'start',
+        data: { rerankerType: config.reranker.type }
+      })
+
+      finalChunks = this.options.reranker.rerank(retrievedChunks)
+
+      rerankedArtifact = {
+        schemaId: 'rag.reranked',
+        producedByStepId: 'rerank',
+        payload: {
+          chunks: finalChunks
+        }
+      }
+
+      trace.push({
+        timestamp: new Date(),
+        level: 'info',
+        step: 'rerank',
+        event: 'end',
+        data: { rerankerType: config.reranker.type, numResults: finalChunks.length }
+      })
+    }
+
     trace.push({
       timestamp: new Date(),
       level: 'info',
@@ -95,19 +152,33 @@ export class RagBm25Runner implements Runner {
       data: { generatorType: config.generator.type }
     })
 
-    const sentences = retrievedChunks.map((chunk, index) => ({
-      sentenceId: `s${index + 1}`,
-      text: chunk.text,
-      citations: [{ chunkId: chunk.chunkId }]
-    }))
+    let generatedOutput: RagGeneratedOutput
 
-    const answer = sentences.map(sentence => sentence.text).join(' ')
+    if (config.generator.type === 'llm') {
+      if (!this.options.llmGenerator) {
+        throw new Error('LLM generator not provided')
+      }
+      generatedOutput = await this.options.llmGenerator.generate({
+        query,
+        retrievedChunks: finalChunks
+      })
+    } else {
+      const sentences = finalChunks.map((chunk, index) => ({
+        sentenceId: `s${index + 1}`,
+        text: chunk.text,
+        citations: [{ chunkId: chunk.chunkId }]
+      }))
 
-    const generatedOutput = {
-      answer,
-      sentences,
-      generatorType: config.generator.type,
-      sourcesUsed: Array.from(new Set(sentences.flatMap(sentence => sentence.citations.map(c => c.chunkId))))
+      const answer = sentences.map(sentence => sentence.text).join(' ')
+
+      generatedOutput = {
+        answer,
+        sentences,
+        generatorType: config.generator.type,
+        sourcesUsed: Array.from(
+          new Set(sentences.flatMap(sentence => sentence.citations?.map(c => c.chunkId) ?? []))
+        )
+      }
     }
 
     const generatedArtifact: ArtifactRecord = {
@@ -123,7 +194,7 @@ export class RagBm25Runner implements Runner {
       event: 'end',
       data: {
         generatorType: config.generator.type,
-        sentenceCount: sentences.length
+        sentenceCount: generatedOutput.sentences.length
       }
     })
 
@@ -139,7 +210,9 @@ export class RagBm25Runner implements Runner {
         latency: completedAt.getTime() - startedAt.getTime()
       },
       trace,
-      artifacts: [retrievedArtifact, generatedArtifact],
+      artifacts: [retrievedArtifact, rerankedArtifact, generatedArtifact].filter(
+        Boolean
+      ) as ArtifactRecord[],
       startedAt,
       completedAt,
       provenance: {
