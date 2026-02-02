@@ -20,13 +20,25 @@ const hasOverlap = (left: string[], right: string[]): boolean => {
   return left.some(token => rightSet.has(token))
 }
 
-const strictMatch = (sentence: string, chunkText: string): { matched: boolean; attempted: string[] } => {
+const findSpan = (sentence: string, chunkText: string): { start: number; end: number } | undefined => {
+  const sentenceTokens = extractTokens(sentence, properNounPattern)
+  if (sentenceTokens.length === 0) return undefined
+  const token = sentenceTokens[0]
+  const index = chunkText.toLowerCase().indexOf(token)
+  if (index === -1) return undefined
+  return { start: index, end: index + token.length }
+}
+
+const strictMatch = (
+  sentence: string,
+  chunkText: string
+): { matched: boolean; attempted: string[]; span?: { start: number; end: number } } => {
   const attempted = ['strict:proper_noun', 'strict:number']
   const sentenceProperNouns = extractTokens(sentence, properNounPattern)
   const chunkProperNouns = extractTokens(chunkText, properNounPattern)
 
   if (hasOverlap(sentenceProperNouns, chunkProperNouns)) {
-    return { matched: true, attempted }
+    return { matched: true, attempted, span: findSpan(sentence, chunkText) }
   }
 
   const sentenceNumbers = extractTokens(sentence, numberPattern)
@@ -108,7 +120,8 @@ export class RagEvidenceReporter implements Reporter {
             chunkId: citation.chunkId,
             producedByStepId: generatedArtifact?.producedByStepId ?? 'generate',
             method: 'strict',
-            attempted: strict.attempted
+            attempted: strict.attempted,
+            span: strict.span
           })
           continue
         }

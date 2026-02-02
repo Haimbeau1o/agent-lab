@@ -216,4 +216,25 @@ describe('RagEvidenceReporter', () => {
     expect(payload.supported).toHaveLength(1)
     expect(payload.supported[0].chunkId).toBe('c2')
   })
+
+  it('adds span to supported links when strict match hits', async () => {
+    const reporter = new RagEvidenceReporter()
+    const reports = await reporter.run('run-10', {
+      artifacts: [
+        {
+          schemaId: 'rag.retrieved',
+          producedByStepId: 'retrieve',
+          payload: { chunks: [{ chunkId: 'c1', text: 'Alpha beta gamma' }] }
+        },
+        generatedArtifact([
+          { sentenceId: 's12', text: 'Alpha', citations: [{ chunkId: 'c1' }] }
+        ])
+      ]
+    })
+
+    const payload = reports[0].payload as any
+
+    expect(payload.supported).toHaveLength(1)
+    expect(payload.supported[0].span).toEqual({ start: 0, end: 5 })
+  })
 })
