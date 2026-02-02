@@ -6,6 +6,9 @@ import type { ArtifactRecord } from '../../../core/contracts/artifact.js'
 import bm25 from 'wink-bm25-text-search'
 import winkTokenizer from 'wink-tokenizer'
 import type { RagGeneratedOutput } from '../schemas.js'
+import { sentenceChunk } from '../chunkers/sentence-chunker.js'
+import { fixedChunk } from '../chunkers/fixed-chunker.js'
+import { slidingChunk } from '../chunkers/sliding-chunker.js'
 
 const tokenizer = winkTokenizer().tokenize
 
@@ -16,9 +19,10 @@ type RagInput = {
 
 type RagRunnerConfig = {
   dataset: { documents: Array<{ id: string; text: string }> }
-  retriever: { type: 'bm25'; impl: 'wink'; topK?: number }
+  chunking?: { strategy: 'doc' | 'sentence' | 'fixed' | 'sliding'; size?: number; overlap?: number }
+  retriever: { type: 'bm25' | 'hybrid'; impl: 'wink'; topK?: number }
   generator: { type: 'template' | 'llm' }
-  reranker?: { enabled: boolean; type: 'simple' }
+  reranker?: { enabled: boolean; type: 'simple' | 'llm' }
 }
 
 type RagLLMGeneratorLike = {
@@ -37,13 +41,25 @@ type RagRerankerLike = {
   }>
 }
 
+type RagHybridRetrieverLike = {
+  search: (
+    query: string,
+    docs: Array<{ id: string; text: string }>,
+    topK: number
+  ) => Promise<Array<{ chunkId: string; score: number; rank: number }>>
+}
+
 export class RagBm25Runner implements Runner {
   id = 'rag.bm25'
   type = 'rag'
   version = '0.1.0'
 
   constructor(
-    private readonly options: { llmGenerator?: RagLLMGeneratorLike; reranker?: RagRerankerLike } = {}
+    private readonly options: {
+      llmGenerator?: RagLLMGeneratorLike
+      reranker?: RagRerankerLike
+      hybridRetriever?: RagHybridRetrieverLike
+    } = {}
   ) {}
 
   async execute(task: AtomicTask, config: RagRunnerConfig): Promise<RunRecord> {
@@ -57,35 +73,21 @@ export class RagBm25Runner implements Runner {
 
     const topKUsed = topKOverride ?? config.retriever.topK ?? 5
 
+    const chunking = config.chunking ?? { strategy: 'doc' }
+    const chunks = this.buildChunks(config.dataset.documents, chunking)
+
     trace.push({
       timestamp: new Date(),
       level: 'info',
       step: 'retrieve',
       event: 'start',
-      data: { topK: topKUsed }
+      data: { topK: topKUsed, strategy: config.retriever.type }
     })
 
-    const engine = bm25()
-    engine.defineConfig({ fldWeights: { text: 1 } })
-    engine.definePrepTasks([tokenizer])
-
-    config.dataset.documents.forEach((doc, idx) => {
-      engine.addDoc({ text: doc.text }, idx)
-    })
-    engine.consolidate()
-
-    const results = engine.search(query, topKUsed)
-    const retrievedChunks = results.map((result, index) => {
-      const docIndex = result[0] as number
-      const score = result[1] as number
-      const doc = config.dataset.documents[docIndex]
-      return {
-        chunkId: doc.id,
-        text: doc.text,
-        score,
-        rank: index + 1
-      }
-    })
+    const retrievedChunks =
+      config.retriever.type === 'hybrid'
+        ? await this.retrieveHybrid(query, chunks, topKUsed)
+        : this.retrieveBm25(query, chunks, topKUsed)
 
     const retrievedArtifact: ArtifactRecord = {
       schemaId: 'rag.retrieved',
@@ -104,7 +106,7 @@ export class RagBm25Runner implements Runner {
       event: 'end',
       data: {
         topK: topKUsed,
-        numDocs: config.dataset.documents.length,
+        numDocs: chunks.length,
         numResults: retrievedChunks.length
       }
     })
@@ -221,5 +223,78 @@ export class RagBm25Runner implements Runner {
         config
       }
     }
+  }
+
+  private buildChunks(
+    docs: Array<{ id: string; text: string }>,
+    chunking: { strategy: 'doc' | 'sentence' | 'fixed' | 'sliding'; size?: number; overlap?: number }
+  ): Array<{ id: string; text: string }> {
+    if (chunking.strategy === 'doc') {
+      return docs.map(doc => ({ id: doc.id, text: doc.text }))
+    }
+
+    const chunks: Array<{ id: string; text: string }> = []
+    docs.forEach(doc => {
+      const localChunks =
+        chunking.strategy === 'sentence'
+          ? sentenceChunk(doc.text)
+          : chunking.strategy === 'fixed'
+            ? fixedChunk(doc.text, chunking.size ?? 200)
+            : slidingChunk(doc.text, chunking.size ?? 200, chunking.overlap ?? 50)
+
+      localChunks.forEach((chunk, index) => {
+        chunks.push({ id: `${doc.id}:${index + 1}`, text: chunk.text })
+      })
+    })
+
+    return chunks
+  }
+
+  private retrieveBm25(
+    query: string,
+    docs: Array<{ id: string; text: string }>,
+    topK: number
+  ): Array<{ chunkId: string; text: string; score: number; rank: number }> {
+    const engine = bm25()
+    engine.defineConfig({ fldWeights: { text: 1 } })
+    engine.definePrepTasks([tokenizer])
+
+    docs.forEach((doc, idx) => {
+      engine.addDoc({ text: doc.text }, idx)
+    })
+    engine.consolidate()
+
+    const results = engine.search(query, topK)
+    return results.map((result, index) => {
+      const docIndex = result[0] as number
+      const score = result[1] as number
+      const doc = docs[docIndex]
+      return {
+        chunkId: doc.id,
+        text: doc.text,
+        score,
+        rank: index + 1
+      }
+    })
+  }
+
+  private async retrieveHybrid(
+    query: string,
+    docs: Array<{ id: string; text: string }>,
+    topK: number
+  ): Promise<Array<{ chunkId: string; text: string; score: number; rank: number }>> {
+    if (!this.options.hybridRetriever) {
+      throw new Error('Hybrid retriever not provided')
+    }
+
+    const results = await this.options.hybridRetriever.search(query, docs, topK)
+    const docMap = new Map(docs.map(doc => [doc.id, doc.text]))
+
+    return results.map(result => ({
+      chunkId: result.chunkId,
+      text: docMap.get(result.chunkId) ?? '',
+      score: result.score,
+      rank: result.rank
+    }))
   }
 }
