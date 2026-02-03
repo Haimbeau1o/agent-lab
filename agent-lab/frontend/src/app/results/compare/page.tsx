@@ -1,13 +1,23 @@
 import { MethodCompareTable } from '../../../components/rag/MethodCompareTable'
 
-async function fetchRuns() {
+type Score = {
+  metric: string
+  value: number | string
+}
+
+type RunItem = {
+  id: string
+  provenance?: { runnerId?: string }
+}
+
+async function fetchRuns(): Promise<RunItem[]> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/eval/runs`, { cache: 'no-store' })
   if (!res.ok) return []
   const data = await res.json()
   return data?.data ?? []
 }
 
-async function fetchScores(runId: string) {
+async function fetchScores(runId: string): Promise<Score[]> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/eval/runs/${runId}/scores`, { cache: 'no-store' })
   if (!res.ok) return []
   const data = await res.json()
@@ -17,7 +27,7 @@ async function fetchScores(runId: string) {
 export default async function ComparePage() {
   const runs = await fetchRuns()
   const summaries = await Promise.all(
-    runs.map(async (run: any) => ({
+    runs.map(async (run: RunItem) => ({
       id: run.id,
       runnerId: run.provenance?.runnerId ?? 'unknown',
       scores: await fetchScores(run.id)

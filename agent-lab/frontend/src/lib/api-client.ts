@@ -2,7 +2,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 async function handleResponse(response: Response) {
     if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
+        const error = await response.json().catch(() => ({} as Record<string, unknown>));
         throw new Error(error.error?.message || error.message || "请求失败");
     }
     return response.json();
@@ -19,7 +19,7 @@ export const apiClient = {
 
     // Tasks
     getTasks: () => fetch(`${API_BASE}/tasks`).then(handleResponse),
-    createTask: (data: any) => fetch(`${API_BASE}/tasks`, {
+    createTask: (data: unknown) => fetch(`${API_BASE}/tasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -38,7 +38,7 @@ export const apiClient = {
 
     // Settings
     getApiConfigs: () => fetch(`${API_BASE}/settings/api-config`).then(handleResponse),
-    createApiConfig: (data: any) => fetch(`${API_BASE}/settings/api-config`, {
+    createApiConfig: (data: unknown) => fetch(`${API_BASE}/settings/api-config`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

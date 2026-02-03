@@ -53,8 +53,8 @@ export function useTestRun() {
                 const { data: reportData } = await apiClient.getReport(testRunId);
                 setReport(reportData);
             }
-        } catch (err: any) {
-            setError(err.message || '测试执行失败');
+        } catch (err: unknown) {
+            setError((err instanceof Error ? err.message : undefined) || '测试执行失败');
             setStatus('failed');
         }
     }, []);

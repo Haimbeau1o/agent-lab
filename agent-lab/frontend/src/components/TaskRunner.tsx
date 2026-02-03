@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Agent, Task } from '../types/api';
+/* eslint-disable react-hooks/set-state-in-effect */
+import { Agent, Task, ApiConfig } from '../types/api';
 import { apiClient } from '../lib/api-client';
 import { MOCK_AGENTS, MOCK_TASKS } from '../lib/mock-data';
 import { cn } from '../lib/utils';
@@ -14,7 +15,7 @@ const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 export function TaskRunner({ onRun, isRunning }: TaskRunnerProps) {
     const [agents, setAgents] = useState<Agent[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [apiConfigs, setApiConfigs] = useState<any[]>([]);
+    const [apiConfigs, setApiConfigs] = useState<ApiConfig[]>([]);
 
     const [selectedAgent, setSelectedAgent] = useState<string>('');
     const [selectedTask, setSelectedTask] = useState<string>('');

@@ -91,7 +91,7 @@ export default function ResultsPage() {
                 <h3 className="text-lg font-semibold text-white px-2">历史记录</h3>
                 <div className="space-y-3">
                     {testRuns.map((run) => (
-                        <a href="/results/${run.id}" className="glass-card group hover:bg-white/5 transition-all cursor-pointer">
+                        <a key={run.id} href={`/results/${run.id}`} className="glass-card group hover:bg-white/5 transition-all cursor-pointer">
                             <div className="flex flex-col md:flex-row md:items-center gap-4 p-5">
                                 <div className={cn(
                                     "h-12 w-12 rounded-2xl flex items-center justify-center flex-shrink-0",
@@ -139,7 +139,7 @@ export default function ResultsPage() {
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </a>
                     ))}
                 </div>
             </div>
