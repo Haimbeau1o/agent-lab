@@ -395,4 +395,25 @@ describe('EvalEngine', () => {
       expect(comparison).toBeNull()
     })
   })
+
+describe('getRunDetail', () => {
+  it('returns run and scores for existing run', async () => {
+    const task: AtomicTask = {
+      id: 'task-2',
+      name: 'Test Task',
+      type: 'mock',
+      input: { text: 'test' },
+      expected: { result: 'success' },
+      metadata: {}
+    }
+
+    const result = await engine.evaluateTask(task, 'mock.runner', {})
+    const detail = await engine.getRunDetail(result.run.id)
+
+    expect(detail).toBeDefined()
+    expect(detail?.run.id).toBe(result.run.id)
+    expect(detail?.scores).toHaveLength(2)
+  })
+})
+
 })

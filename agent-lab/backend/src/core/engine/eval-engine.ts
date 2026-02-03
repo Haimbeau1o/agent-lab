@@ -239,6 +239,13 @@ export class EvalEngine {
   }
 
   /**
+   * 获取运行详情（Run + Scores）
+   */
+  async getRunDetail(runId: string): Promise<EvalResult | null> {
+    return this.getEvalResult(runId)
+  }
+
+  /**
    * 列出运行记录
    */
   async listRuns(options?: {

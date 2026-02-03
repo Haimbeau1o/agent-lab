@@ -271,6 +271,37 @@ router.get('/runs/:id', async (req, res) => {
   }
 })
 
+
+
+/**
+ * GET /api/eval/runs/:id/detail
+ * 获取运行详情（Run + Scores）
+ */
+router.get('/runs/:id/detail', async (req, res) => {
+  try {
+    const { id } = req.params
+
+    const detail = await engine.getRunDetail(id)
+
+    if (!detail) {
+      return res.status(404).json({
+        success: false,
+        error: 'Run not found'
+      })
+    }
+
+    res.json({
+      success: true,
+      data: detail
+    })
+  } catch (error) {
+    logger.error('Get run detail failed', { error })
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    })
+  }
+})
 /**
  * GET /api/eval/runs/:id/scores
  * 获取运行的评分记录

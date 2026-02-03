@@ -6,6 +6,8 @@ export const RagArtifactSchemas = {
 
 export type RagCitationRef = {
   chunkId: string
+  span?: { start: number; end: number }
+  alignmentId?: string
 }
 
 export type RagSentence = {
@@ -28,6 +30,8 @@ export type RagEvidenceLink = {
   method: 'strict' | 'semantic'
   confidence?: number
   attempted?: string[]
+  span?: { start: number; end: number }
+  alignmentId?: string
 }
 
 export type RagUnsupportedLink = RagEvidenceLink & {
