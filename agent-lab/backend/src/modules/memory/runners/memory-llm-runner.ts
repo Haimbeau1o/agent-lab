@@ -229,7 +229,7 @@ export class MemoryLLMRunner implements Runner {
    */
   private async executeRetrieve(
     input: MemoryInput,
-    config: MemoryRunnerConfig,
+    _config: MemoryRunnerConfig,
     trace: TraceEvent[]
   ): Promise<MemoryOutput> {
     const existingMemories = input.existingMemories ?? []

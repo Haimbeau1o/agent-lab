@@ -8,7 +8,6 @@
 import type { AtomicTask, ScenarioTask } from '../contracts/task.js'
 import type { RunRecord } from '../contracts/run-record.js'
 import type { ScoreRecord } from '../contracts/score-record.js'
-import type { Runner } from '../contracts/runner.js'
 import type { Evaluator } from '../contracts/evaluator.js'
 import type { RunnerRegistry } from '../registry/runner-registry.js'
 import type { EvaluatorRegistry } from '../registry/evaluator-registry.js'

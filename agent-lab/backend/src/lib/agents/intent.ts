@@ -24,16 +24,29 @@ export class IntentRecognizer {
     }
 
     const response = await this.llmClient.chat(request)
+    if (!response || typeof response.content !== 'string') {
+      throw new Error('Invalid LLM response: missing content')
+    }
 
     try {
-      const result = JSON.parse(response.content) as IntentResult
+      const parsed = JSON.parse(response.content) as Partial<IntentResult>
 
-      // 验证 intent 是否在允许列表中
-      if (!this.config.intents.includes(result.intent)) {
-        throw new Error(`Intent "${result.intent}" not in allowed list: ${this.config.intents.join(', ')}`)
+      if (!parsed || typeof parsed.intent !== 'string' || typeof parsed.confidence !== 'number') {
+        throw new Error('Invalid LLM response format')
       }
 
-      return result
+      // 验证 intent 是否在允许列表中
+      if (!this.config.intents.includes(parsed.intent)) {
+        throw new Error(
+          `Intent not in allowed list: ${parsed.intent}. Allowed intents: ${this.config.intents.join(', ')}`
+        )
+      }
+
+      return {
+        intent: parsed.intent,
+        confidence: parsed.confidence,
+        reasoning: typeof parsed.reasoning === 'string' ? parsed.reasoning : undefined
+      }
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new Error(`Failed to parse LLM response as JSON: ${response.content}`)

@@ -7,17 +7,19 @@ import type { CreateApiConfigDto, UpdateApiConfigDto } from '../../types/api-con
 export const settingsRouter = Router()
 
 // Validate encryption configuration
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY
-const ENCRYPTION_SALT = process.env.ENCRYPTION_SALT
+const rawEncryptionKey = process.env.ENCRYPTION_KEY
+const rawEncryptionSalt = process.env.ENCRYPTION_SALT
 
-if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
+if (!rawEncryptionKey || rawEncryptionKey.length < 32) {
   throw new Error('ENCRYPTION_KEY environment variable must be set and at least 32 characters long')
 }
 
-if (!ENCRYPTION_SALT || Buffer.from(ENCRYPTION_SALT, 'hex').length < 16) {
+if (!rawEncryptionSalt || Buffer.from(rawEncryptionSalt, 'hex').length < 16) {
   throw new Error('ENCRYPTION_SALT environment variable must be set and at least 32 hex characters (16 bytes)')
 }
 
+const ENCRYPTION_KEY: string = rawEncryptionKey
+const ENCRYPTION_SALT: string = rawEncryptionSalt
 const ALGORITHM = 'aes-256-cbc'
 const SALT_BUFFER = Buffer.from(ENCRYPTION_SALT, 'hex')
 
@@ -67,7 +69,7 @@ function maskApiKey(apiKey: string): string {
 }
 
 // GET /api/settings/api-config - Get all API configs
-settingsRouter.get('/api-config', async (req, res, next) => {
+settingsRouter.get('/api-config', async (_req, res, next) => {
   try {
     const configs = await prisma.apiConfig.findMany({
       orderBy: { createdAt: 'desc' }
@@ -237,7 +239,7 @@ settingsRouter.delete('/api-config/:id', async (req, res, next) => {
 })
 
 // POST /api/settings/api-config/:id/test - Test API connection
-settingsRouter.post('/api-config/:id/test', async (req, res, next) => {
+settingsRouter.post('/api-config/:id/test', async (req, res, _next) => {
   try {
     const { id } = req.params
 

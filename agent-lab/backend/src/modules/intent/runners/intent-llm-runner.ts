@@ -151,7 +151,7 @@ export class IntentLLMRunner implements Runner {
         provenance: {
           runnerId: this.id,
           runnerVersion: this.version,
-          config: runnerConfig
+          config: { ...runnerConfig }
         }
       }
     } catch (error) {

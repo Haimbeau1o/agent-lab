@@ -22,7 +22,7 @@ export class HybridRetriever {
     const bm25Scores = this.computeBm25Scores(query, docs)
     const vectorScores = await this.computeVectorScores(query, docs)
 
-    const combined = docs.map((doc, index) => {
+    const combined = docs.map(doc => {
       const bm25Score = bm25Scores.get(doc.id) ?? 0
       const vectorScore = vectorScores.get(doc.id) ?? 0
       const score = this.config.bm25Weight * bm25Score + this.config.vectorWeight * vectorScore

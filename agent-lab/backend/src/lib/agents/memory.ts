@@ -52,16 +52,27 @@ export class MemoryManager {
       return []
     }
 
-    // 简单的关键词匹配检索
+    const queryLower = query.toLowerCase()
+    const queryTokens = this.buildQueryTokens(queryLower)
+
     const relevantMemories = allMemories.filter(memory => {
-      const queryLower = query.toLowerCase()
       const keyLower = memory.key.toLowerCase()
       const valueLower = String(memory.value).toLowerCase()
+      const searchable = `${keyLower} ${valueLower}`
 
-      return keyLower.includes(queryLower) ||
-             valueLower.includes(queryLower) ||
-             query.includes(keyLower) ||
-             query.includes(valueLower)
+      if (searchable.includes(queryLower)) {
+        return true
+      }
+
+      return queryTokens.some(token => {
+        if (!token) return false
+
+        return (
+          searchable.includes(token) ||
+          token.includes(keyLower) ||
+          token.includes(valueLower)
+        )
+      })
     })
 
     // 按重要性排序
@@ -74,6 +85,45 @@ export class MemoryManager {
 
   clearMemories(): void {
     this.memories.clear()
+  }
+
+  private buildQueryTokens(query: string): string[] {
+    const baseTokens = query.match(/[a-z0-9_]+|[\u4e00-\u9fff]+/gi) ?? []
+    const semanticHints = new Set<string>()
+
+    if (/多大|几岁|年龄|age/.test(query)) {
+      semanticHints.add('age')
+      semanticHints.add('年龄')
+      semanticHints.add('岁')
+      semanticHints.add('user_age')
+    }
+
+    if (/姓名|名字|叫什?么|name/.test(query)) {
+      semanticHints.add('name')
+      semanticHints.add('姓名')
+      semanticHints.add('名字')
+      semanticHints.add('user_name')
+    }
+
+    if (/爱好|喜欢|兴趣|hobby/.test(query)) {
+      semanticHints.add('hobby')
+      semanticHints.add('爱好')
+      semanticHints.add('喜欢')
+      semanticHints.add('兴趣')
+      semanticHints.add('user_hobby')
+    }
+
+    if (/用户|信息|资料|介绍|是谁/.test(query)) {
+      semanticHints.add('user')
+      semanticHints.add('name')
+      semanticHints.add('age')
+      semanticHints.add('hobby')
+      semanticHints.add('user_name')
+      semanticHints.add('user_age')
+      semanticHints.add('user_hobby')
+    }
+
+    return Array.from(new Set([...baseTokens, ...semanticHints]))
   }
 
   private buildExtractionPrompt(): string {

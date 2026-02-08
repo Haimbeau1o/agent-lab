@@ -7,8 +7,10 @@ import { DialogueManager } from '../../lib/agents/dialogue.js'
 import { MemoryManager } from '../../lib/agents/memory.js'
 import { decrypt } from '../settings/index.js'
 import { generateReport } from '../../lib/evaluator/report.js'
-import type { CreateTestRunDto } from '../../types/result.js'
+import type { CreateTestRunDto, TestResult } from '../../types/result.js'
 import type { IntentTestCase, DialogueTestCase, MemoryTestCase } from '../../types/task.js'
+import type { ApiConfig } from '../../types/api-config.js'
+import type { IntentConfig } from '../../types/agent.js'
 
 export const testRunsRouter = Router()
 
@@ -20,8 +22,72 @@ const createTestRunSchema = z.object({
   apiConfigId: z.string()
 })
 
+const API_PROVIDERS = ['openai', 'anthropic', 'custom'] as const
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function toApiConfig(config: {
+  id: string
+  name: string
+  provider: string
+  apiKey: string
+  baseUrl: string
+  modelName: string
+  isDefault: boolean
+  createdAt: Date
+  updatedAt: Date
+}): ApiConfig {
+  if (!API_PROVIDERS.includes(config.provider as (typeof API_PROVIDERS)[number])) {
+    throw new Error(`Unsupported API provider: ${config.provider}`)
+  }
+
+  return {
+    ...config,
+    provider: config.provider as ApiConfig['provider']
+  }
+}
+
+function toIntentConfig(config: unknown): IntentConfig {
+  if (!isRecord(config)) {
+    throw new Error('Intent agent config must be an object')
+  }
+
+  const intentsValue = config.intents
+  if (
+    !Array.isArray(intentsValue) ||
+    intentsValue.length === 0 ||
+    intentsValue.some(intent => typeof intent !== 'string')
+  ) {
+    throw new Error('Intent agent config must include non-empty intents array')
+  }
+
+  let examples: Record<string, string[]> | undefined
+  if (isRecord(config.examples)) {
+    examples = {}
+    for (const [intent, values] of Object.entries(config.examples)) {
+      if (Array.isArray(values) && values.every(value => typeof value === 'string')) {
+        examples[intent] = values
+      }
+    }
+  }
+
+  return {
+    intents: intentsValue as string[],
+    examples,
+    temperature: typeof config.temperature === 'number' ? config.temperature : undefined,
+    maxTokens: typeof config.maxTokens === 'number' ? config.maxTokens : undefined,
+    topP: typeof config.topP === 'number' ? config.topP : undefined,
+    frequencyPenalty:
+      typeof config.frequencyPenalty === 'number' ? config.frequencyPenalty : undefined,
+    presencePenalty:
+      typeof config.presencePenalty === 'number' ? config.presencePenalty : undefined
+  }
+}
+
 // GET /api/test-runs - Get all test runs
-testRunsRouter.get('/', async (req, res, next) => {
+testRunsRouter.get('/', async (_req, res, next) => {
   try {
     const testRuns = await prisma.testRun.findMany({
       include: {
@@ -165,10 +231,10 @@ async function executeTests(
   try {
     // Decrypt API key
     const decryptedApiKey = decrypt(apiConfig.apiKey)
-    const decryptedApiConfig = {
+    const decryptedApiConfig = toApiConfig({
       ...apiConfig,
       apiKey: decryptedApiKey
-    }
+    })
 
     // Create LLM client
     const llmClient = new LLMClient(decryptedApiConfig)
@@ -179,11 +245,26 @@ async function executeTests(
 
     // Execute based on agent type
     if (agent.type === 'intent') {
-      await executeIntentTests(testRunId, llmClient, agentConfig, testCases)
+      await executeIntentTests(
+        testRunId,
+        llmClient,
+        toIntentConfig(agentConfig),
+        testCases as IntentTestCase[]
+      )
     } else if (agent.type === 'dialogue') {
-      await executeDialogueTests(testRunId, llmClient, agentConfig, testCases)
+      await executeDialogueTests(
+        testRunId,
+        llmClient,
+        agentConfig as Record<string, unknown>,
+        testCases as DialogueTestCase[]
+      )
     } else if (agent.type === 'memory') {
-      await executeMemoryTests(testRunId, llmClient, agentConfig, testCases)
+      await executeMemoryTests(
+        testRunId,
+        llmClient,
+        agentConfig as Record<string, unknown>,
+        testCases as MemoryTestCase[]
+      )
     }
 
     // Mark test run as completed
@@ -200,7 +281,7 @@ async function executeTests(
 async function executeIntentTests(
   testRunId: string,
   llmClient: LLMClient,
-  config: Record<string, unknown>,
+  config: IntentConfig,
   testCases: IntentTestCase[]
 ) {
   const recognizer = new IntentRecognizer(llmClient, config)
@@ -379,16 +460,22 @@ testRunsRouter.get('/:id/report', async (req, res, next) => {
     }
 
     // Parse results
-    const results = testRun.results.map(r => ({
-      ...r,
-      input: JSON.parse(r.input),
-      output: JSON.parse(r.output),
-      expected: r.expected ? JSON.parse(r.expected) : null,
-      metrics: JSON.parse(r.metrics)
+    const results: TestResult[] = testRun.results.map(record => ({
+      ...record,
+      input: JSON.parse(record.input),
+      output: JSON.parse(record.output),
+      expected: record.expected ? JSON.parse(record.expected) : undefined,
+      tokenCount: record.tokenCount ?? undefined,
+      metrics: JSON.parse(record.metrics),
+      isCorrect: record.isCorrect ?? undefined
     }))
 
     // Generate report
-    const report = generateReport(id, testRun.agent.type as 'intent' | 'dialogue' | 'memory', results)
+    const report = generateReport(
+      id,
+      testRun.agent.type as 'intent' | 'dialogue' | 'memory',
+      results
+    )
 
     res.json({ data: report })
   } catch (error) {

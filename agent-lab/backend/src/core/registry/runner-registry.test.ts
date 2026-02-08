@@ -7,7 +7,6 @@ import { RunnerRegistry } from './runner-registry.js'
 import type { Runner } from '../contracts/runner.js'
 import type { AtomicTask, RunRecord } from '../contracts/index.js'
 
-// Mock Runner for testing
 class MockRunner implements Runner {
   constructor(
     public id: string,
@@ -15,7 +14,7 @@ class MockRunner implements Runner {
     public version: string = '1.0.0'
   ) {}
 
-  async execute(task: AtomicTask, config: unknown): Promise<RunRecord> {
+  async execute(task: AtomicTask, _config: unknown): Promise<RunRecord> {
     return {
       id: 'mock-run-id',
       taskId: task.id,
@@ -47,42 +46,41 @@ describe('RunnerRegistry', () => {
       const runner = new MockRunner('test.runner', 'test')
 
       expect(() => registry.register(runner)).not.toThrow()
-      expect(registry.has('test')).toBe(true)
+      expect(registry.has('test.runner')).toBe(true)
+      expect(registry.size()).toBe(1)
     })
 
-    it('should throw error when registering duplicate type', () => {
-      const runner1 = new MockRunner('test.runner1', 'test')
-      const runner2 = new MockRunner('test.runner2', 'test')
+    it('should throw error when registering duplicate id', () => {
+      const runner1 = new MockRunner('test.runner', 'test')
+      const runner2 = new MockRunner('test.runner', 'test2')
 
       registry.register(runner1)
 
       expect(() => registry.register(runner2)).toThrow(
-        'Runner with type "test" is already registered'
+        'Runner with ID "test.runner" is already registered.'
       )
     })
   })
 
   describe('get', () => {
-    it('should retrieve registered runner by type', () => {
+    it('should retrieve registered runner by id', () => {
       const runner = new MockRunner('test.runner', 'test')
       registry.register(runner)
 
-      const retrieved = registry.get('test')
+      const retrieved = registry.get('test.runner')
 
       expect(retrieved).toBe(runner)
-      expect(retrieved.id).toBe('test.runner')
+      expect(retrieved?.id).toBe('test.runner')
     })
 
-    it('should throw error when getting non-existent runner', () => {
-      expect(() => registry.get('non-existent')).toThrow(
-        'No runner registered for type "non-existent"'
-      )
+    it('should return null when runner id does not exist', () => {
+      expect(registry.get('non-existent')).toBeNull()
     })
   })
 
-  describe('list', () => {
+  describe('listAll', () => {
     it('should return empty array when no runners registered', () => {
-      const runners = registry.list()
+      const runners = registry.listAll()
 
       expect(runners).toEqual([])
       expect(runners.length).toBe(0)
@@ -95,7 +93,7 @@ describe('RunnerRegistry', () => {
       registry.register(runner1)
       registry.register(runner2)
 
-      const runners = registry.list()
+      const runners = registry.listAll()
 
       expect(runners.length).toBe(2)
       expect(runners).toContain(runner1)
@@ -106,22 +104,40 @@ describe('RunnerRegistry', () => {
       const runner = new MockRunner('test.runner', 'test')
       registry.register(runner)
 
-      const runners = registry.list()
+      const runners = registry.listAll()
       runners.pop()
 
       expect(registry.size()).toBe(1)
     })
   })
 
+  describe('listByType', () => {
+    it('should return runners with the same type', () => {
+      const runner1 = new MockRunner('test.runner1', 'intent')
+      const runner2 = new MockRunner('test.runner2', 'intent')
+      const runner3 = new MockRunner('test.runner3', 'dialogue')
+
+      registry.register(runner1)
+      registry.register(runner2)
+      registry.register(runner3)
+
+      const runners = registry.listByType('intent')
+
+      expect(runners).toHaveLength(2)
+      expect(runners).toContain(runner1)
+      expect(runners).toContain(runner2)
+    })
+  })
+
   describe('has', () => {
-    it('should return true for registered type', () => {
+    it('should return true for registered id', () => {
       const runner = new MockRunner('test.runner', 'test')
       registry.register(runner)
 
-      expect(registry.has('test')).toBe(true)
+      expect(registry.has('test.runner')).toBe(true)
     })
 
-    it('should return false for non-existent type', () => {
+    it('should return false for non-existent id', () => {
       expect(registry.has('non-existent')).toBe(false)
     })
   })

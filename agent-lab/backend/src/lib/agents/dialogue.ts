@@ -46,6 +46,9 @@ export class DialogueManager {
     }
     this.history.push(assistantMessage)
 
+    // 管理历史长度（包含 assistant 消息）
+    this.truncateHistory()
+
     return response.content
   }
 

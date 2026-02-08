@@ -69,6 +69,12 @@ describe('IntentRecognizer', () => {
     })
 
     it('should include examples in system prompt', async () => {
+      vi.mocked(mockLLMClient.chat).mockResolvedValue({
+        content: '{"intent": "greeting", "confidence": 0.8}',
+        usage: { promptTokens: 50, completionTokens: 20, totalTokens: 70 },
+        latency: 500
+      })
+
       await recognizer.recognize('Test input')
 
       expect(mockLLMClient.chat).toHaveBeenCalledWith(

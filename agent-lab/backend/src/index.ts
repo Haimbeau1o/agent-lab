@@ -46,7 +46,7 @@ app.use('/api/', apiLimiter)
 app.use(express.json({ limit: '1mb' }))
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
@@ -59,7 +59,7 @@ app.use('/api/test-runs', testRunsRouter)  // 旧 API（待废弃）
 app.use('/api/settings', settingsRouter)
 
 // Error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   logger.error('Request error', {
     error: err.message,
     stack: err.stack,
