@@ -7,71 +7,21 @@
 import express from 'express'
 import { z } from 'zod'
 import { PrismaClient } from '@prisma/client'
-import { EvalEngine, PrismaStorage } from '../../core/engine/index.js'
-import { RunnerRegistry } from '../../core/registry/runner-registry.js'
-import { EvaluatorRegistry } from '../../core/registry/evaluator-registry.js'
-import { ReporterRegistry } from '../../core/registry/reporter-registry.js'
-import { LLMClient } from '../../lib/llm/client.js'
 import { logger } from '../../lib/utils/logger.js'
 import type { AtomicTask, ScenarioTask } from '../../core/contracts/task.js'
-import {
-  IntentLLMRunner,
-  IntentMetricsEvaluator,
-  DialogueLLMRunner,
-  DialogueMetricsEvaluator,
-  MemoryLLMRunner,
-  MemoryMetricsEvaluator,
-  RagMockRunner,
-  RagMetricsEvaluator,
-  RagEvidenceReporter
-} from '../../modules/index.js'
+import { createEvalRuntime } from './runtime.js'
 
 const router = express.Router()
-
-// 初始化 Prisma Client
 const prisma = new PrismaClient()
 
-// 初始化 Engine
-const storage = new PrismaStorage(prisma)
-const runnerRegistry = new RunnerRegistry()
-const evaluatorRegistry = new EvaluatorRegistry()
-const reporterRegistry = new ReporterRegistry()
-
-// 初始化 LLM Client
-const llmClient = new LLMClient({
-  id: 'default',
-  name: 'Default OpenAI Config',
-  provider: 'openai',
-  apiKey: process.env.OPENAI_API_KEY || '',
-  baseUrl: 'https://api.openai.com/v1',
-  modelName: process.env.LLM_MODEL || 'gpt-4',
-  isDefault: true,
-  createdAt: new Date(),
-  updatedAt: new Date()
-})
-
-// 注册所有 Runners
-runnerRegistry.register(new IntentLLMRunner(llmClient))
-runnerRegistry.register(new DialogueLLMRunner(llmClient))
-runnerRegistry.register(new MemoryLLMRunner(llmClient))
-runnerRegistry.register(new RagMockRunner())
-
-// 注册所有 Evaluators
-evaluatorRegistry.register(new IntentMetricsEvaluator())
-evaluatorRegistry.register(new DialogueMetricsEvaluator())
-evaluatorRegistry.register(new MemoryMetricsEvaluator())
-evaluatorRegistry.register(new RagMetricsEvaluator())
-
-// 注册所有 Reporters
-reporterRegistry.register(new RagEvidenceReporter())
-
-// 创建 Engine
-const engine = new EvalEngine({
+const {
+  engine,
   runnerRegistry,
   evaluatorRegistry,
-  reporterRegistry,
-  storage
-})
+  taskDefinitionRegistry,
+  workflowDefinitionRegistry,
+  methodDefinitionRegistry
+} = createEvalRuntime({ prisma })
 
 // 验证 schema
 const runTaskSchema = z.object({
@@ -459,6 +409,22 @@ router.get('/evaluators', (_req, res) => {
       id: e.id,
       metrics: e.metrics
     }))
+  })
+})
+
+
+/**
+ * GET /api/eval/definitions
+ * 列出所有注册的 Task / Workflow / Method 定义
+ */
+router.get('/definitions', (_req, res) => {
+  res.json({
+    success: true,
+    data: {
+      tasks: taskDefinitionRegistry.list(),
+      workflows: workflowDefinitionRegistry.list(),
+      methods: methodDefinitionRegistry.list()
+    }
   })
 })
 
