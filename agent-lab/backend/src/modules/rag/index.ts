@@ -9,3 +9,4 @@ export {
   ragMethodDefinitions,
   registerRagDefinitions
 } from './definitions.js'
+export * from './demo/index.js'
