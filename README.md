@@ -25,6 +25,60 @@
 
 ---
 
+## 🧭 v0.4 Paradigm Entry / 范式入口（必读）
+
+> v0.4 的目标是固化评测范式，而不是堆新功能。任何新增能力都必须先满足以下不变量与边界约束。
+
+### 1) Paradigm Invariants / 范式不变量
+
+1. **固定 Pipeline（不可跳步）**
+   `Define -> Execute -> Trace -> Evaluate -> Store -> Compare -> Report`
+2. **三层模型（不可越层）**
+   `Core Eval Engine -> Capability Modules -> Implementations`
+3. **核心契约稳定**
+   `AtomicTask / ScenarioTask / RunRecord / ScoreRecord` 属于冻结地基，变更必须先开 Issue 并评审。
+4. **Trace + Provenance 是一等公民**
+   每次运行都必须可追踪、可解释、可复现（包含 runner/version/config/fingerprint）。
+
+### 2) Dependency Boundaries / 依赖边界
+
+| Layer | Allowed | Not Allowed |
+| --- | --- | --- |
+| Core Eval Engine | `core/contracts`, `core/registry`, `core/engine` 内部依赖 | 直接 import `modules/*` 业务实现 |
+| Capability Modules | `core/contracts`、本模块内部实现 | 跨模块互相 import；修改 Core 业务流程 |
+| Implementations | 通过 Registry 注册到系统 | 为单能力改 Core Pipeline |
+| API Composition Root | 装配 Registry + Runner/Evaluator/Reporter + Storage | 在路由层内硬编码能力分支逻辑 |
+
+### 3) DefinitionRegistry 职责边界（v0.4）
+
+`DefinitionRegistry` 只负责“定义信息”的生命周期管理，是 UI/API 展示和选择能力的唯一真相源：
+
+- 管理并暴露 Task / Workflow / Method 定义（`register/get/list`）
+- 校验定义 ID 唯一性、结构完整性、版本元信息
+- 为 Run Detail / Compare 等页面提供可读的 registry 元数据映射
+
+`DefinitionRegistry` **不负责**：
+
+- 执行任务或调用模型（这属于 Runner）
+- 计算指标（这属于 Evaluator）
+- 持久化运行结果（这属于 Storage）
+- 输出报告（这属于 Reporter）
+
+### 4) New Capability Checklist / 新增能力 Checklist
+
+新增 `modules/<capability>` 时，按以下顺序落地：
+
+- [ ] 建立模块骨架：`agent-lab/backend/src/modules/<capability>/`
+      （至少包含 `runners/`, `evaluators/`, `reporters/`, `index.ts`）
+- [ ] 在 `DefinitionRegistry` 注册该能力的 Task/Workflow/Method 定义
+- [ ] 实现并注册真实 Runner / Evaluator / Reporter（禁止长期 mock 占位）
+- [ ] 提供 demo dataset：`agent-lab/backend/examples/datasets/<capability>/`
+- [ ] 提供默认 configSnapshot，并保证相同输入可产出稳定 fingerprint
+- [ ] 增加最小 e2e（至少覆盖一次 `/api/eval/run` 闭环：RunRecord + scores + reports + artifacts）
+- [ ] 更新 README 与对应模块文档，确保前后端可按 registry 信息展示
+
+---
+
 ## <a id="english"></a>📖 English Documentation
 
 ### 🎯 What is Agent Lab?
