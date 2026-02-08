@@ -53,6 +53,8 @@
   --destructive-foreground: #fafafa;
   --ring: #6366f1;
   --radius: 0.75rem;
+  --font-sans-local: "Helvetica Neue", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-display-local: "Avenir Next", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
 }
 
 @layer base {
@@ -62,6 +64,7 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans-local);
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
@@ -95,4 +98,7 @@
 
 .hero-gradient {
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+}
+.font-outfit {
+  font-family: var(--font-display-local);
 }
