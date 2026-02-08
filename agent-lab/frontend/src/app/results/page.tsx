@@ -1,168 +1,258 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import {
-    BarChart3,
+    AlertTriangle,
     Calendar,
-    Bot,
-    ClipboardList,
     CheckCircle2,
-    XCircle,
     ChevronRight,
-    TrendingUp,
+    Clock3,
     FileText,
-    AlertTriangle
+    Loader2,
+    Scale,
+    SquareArrowOutUpRight,
+    Workflow,
 } from "lucide-react";
+import { apiClient } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import {
+    formatDateTime,
+    formatLatency,
+    getRunnerLabel,
+} from "@/lib/eval-format";
+import type {
+    ApiEnvelope,
+    EvalRunRecord,
+    EvalRunnerSummary,
+} from "@/types/eval";
 
-const testRuns = [
-    {
-        id: "TR-001",
-        agent: "电商意图识别专家",
-        task: "电商核心意图测试集",
-        date: "2024-01-20 14:30",
-        status: "completed",
-        accuracy: 0.982,
-        latency: "1.1s"
-    },
-    {
-        id: "TR-002",
-        agent: "智能客服对话流",
-        task: "机票预订多轮对话测试",
-        date: "2024-01-18 09:15",
-        status: "completed",
-        accuracy: 0.855,
-        latency: "2.4s"
-    },
-    {
-        id: "TR-003",
-        agent: "电商意图识别专家",
-        task: "双十一压力测试",
-        date: "2024-01-15 22:00",
-        status: "failed",
-        accuracy: 0.621,
-        latency: "5.8s"
-    },
-];
+function statusMeta(status: EvalRunRecord["status"]) {
+    if (status === "completed") {
+        return {
+            label: "已完成",
+            icon: CheckCircle2,
+            className: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
+        };
+    }
+
+    if (status === "running" || status === "pending") {
+        return {
+            label: status === "running" ? "运行中" : "排队中",
+            icon: Loader2,
+            className: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
+        };
+    }
+
+    return {
+        label: "失败",
+        icon: AlertTriangle,
+        className: "bg-red-500/10 text-red-400 border border-red-500/20",
+    };
+}
 
 export default function ResultsPage() {
+    const [runs, setRuns] = useState<EvalRunRecord[]>([]);
+    const [runnerMap, setRunnerMap] = useState<Record<string, EvalRunnerSummary>>({});
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
+
+    useEffect(() => {
+        const load = async () => {
+            setLoading(true);
+            setError(null);
+
+            try {
+                const [runsResponse, runnersResponse] = await Promise.all([
+                    apiClient.getEvalRuns({ limit: 50 }),
+                    apiClient.getEvalRunners(),
+                ]);
+
+                const runData = Array.isArray((runsResponse as ApiEnvelope<unknown>).data)
+                    ? (runsResponse as ApiEnvelope<EvalRunRecord[]>).data
+                    : [];
+
+                const runnerData = Array.isArray((runnersResponse as ApiEnvelope<unknown>).data)
+                    ? (runnersResponse as ApiEnvelope<EvalRunnerSummary[]>).data
+                    : [];
+
+                setRuns(runData);
+                setRunnerMap(Object.fromEntries(runnerData.map((runner) => [runner.id, runner])));
+            } catch (loadError) {
+                setError(loadError instanceof Error ? loadError.message : "加载评测结果失败");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        void load();
+    }, []);
+
+    const latestCompletedRun = useMemo(
+        () => runs.find((run) => run.status === "completed") ?? runs[0] ?? null,
+        [runs]
+    );
+
+    const compareHref = selectedRunIds.length === 2
+        ? `/results/compare?runId1=${encodeURIComponent(selectedRunIds[0])}&runId2=${encodeURIComponent(selectedRunIds[1])}`
+        : "/results/compare";
+
+    const toggleCompare = (runId: string) => {
+        setSelectedRunIds((current) => {
+            if (current.includes(runId)) {
+                return current.filter((id) => id !== runId);
+            }
+
+            if (current.length >= 2) {
+                return [current[1], runId];
+            }
+
+            return [...current, runId];
+        });
+    };
+
     return (
         <div className="space-y-8">
-            <div>
-                <h1 className="text-3xl font-bold text-white font-outfit">评测结果</h1>
-                <p className="mt-2 text-slate-400">分析 Agent 的历史表现与深度报告</p>
-            </div>
-
-            {/* Latest Report Summary */}
-            <div className="glass-card p-8 bg-gradient-to-br from-indigo-600/20 to-cyan-600/20 border-indigo-500/30 relative overflow-hidden">
-                <div className="relative z-10 flex flex-col md:flex-row gap-8 items-start md:items-center">
-                    <div className="flex-1">
-                        <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-widest mb-2">
-                            <TrendingUp className="h-4 w-4" /> 最新报告
-                        </div>
-                        <h2 className="text-2xl font-bold text-white mb-2">电商意图识别专家 - 表现优异</h2>
-                        <p className="text-slate-400 text-sm max-w-2xl leading-relaxed">
-                            在最近的评测中，该 Agent 展现了极高的准确率（98.2%）。特别是在“退款处理”和“物流查询”两个核心意图中，召回率达到了 100%。建议进一步优化“模糊咨询”场景下的置信度阈值。
-                        </p>
-                        <div className="mt-6 flex flex-wrap gap-4">
-                            <div className="flex items-center gap-2 bg-white/5 rounded-xl px-4 py-2 border border-white/10">
-                                <span className="text-xs text-slate-500">准确率</span>
-                                <span className="text-sm font-bold text-emerald-400">98.2%</span>
-                            </div>
-                            <div className="flex items-center gap-2 bg-white/5 rounded-xl px-4 py-2 border border-white/10">
-                                <span className="text-xs text-slate-500">平均延迟</span>
-                                <span className="text-sm font-bold text-white">1.1s</span>
-                            </div>
-                            <div className="flex items-center gap-2 bg-white/5 rounded-xl px-4 py-2 border border-white/10">
-                                <span className="text-xs text-slate-500">Token 效率</span>
-                                <span className="text-sm font-bold text-indigo-400">高</span>
-                            </div>
-                        </div>
-                    </div>
-                    <button className="rounded-xl bg-white px-6 py-3 text-sm font-bold text-indigo-600 shadow-lg hover:bg-indigo-50 transition-all whitespace-nowrap">
-                        查看详细报告
-                    </button>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-white font-outfit">评测结果</h1>
+                    <p className="mt-2 text-slate-400">基于 RunRecord / Scores 的真实结果流</p>
                 </div>
-                <BarChart3 className="absolute right-[-20px] bottom-[-20px] h-48 w-48 text-white/5 -rotate-12" />
+                <Link
+                    href={compareHref}
+                    className={cn(
+                        "inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-colors",
+                        selectedRunIds.length === 2
+                            ? "bg-indigo-500 text-white hover:bg-indigo-400"
+                            : "bg-white/5 text-slate-400 hover:bg-white/10"
+                    )}
+                >
+                    <Scale className="h-4 w-4" />
+                    对比所选运行
+                </Link>
             </div>
 
-            {/* History List */}
-            <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-white px-2">历史记录</h3>
-                <div className="space-y-3">
-                    {testRuns.map((run) => (
-                        <div key={run.id} className="glass-card group hover:bg-white/5 transition-all cursor-pointer">
-                            <div className="flex flex-col md:flex-row md:items-center gap-4 p-5">
-                                <div className={cn(
-                                    "h-12 w-12 rounded-2xl flex items-center justify-center flex-shrink-0",
-                                    run.status === "completed" ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
-                                )}>
-                                    {run.status === "completed" ? <CheckCircle2 className="h-6 w-6" /> : <AlertTriangle className="h-6 w-6" />}
-                                </div>
+            {loading && (
+                <div className="glass-card p-10 text-center text-slate-400">
+                    <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin" />
+                    正在加载真实评测数据...
+                </div>
+            )}
 
-                                <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
-                                    <div className="md:col-span-1">
-                                        <p className="text-xs text-slate-500 font-medium mb-1">Agent / 任务</p>
-                                        <p className="text-sm font-bold text-white truncate">{run.agent}</p>
-                                        <p className="text-xs text-slate-400 truncate">{run.task}</p>
-                                    </div>
+            {!loading && error && (
+                <div className="glass-card border border-red-500/20 bg-red-500/5 p-6">
+                    <p className="text-sm text-red-300">加载失败：{error}</p>
+                </div>
+            )}
 
-                                    <div>
-                                        <p className="text-xs text-slate-500 font-medium mb-1">运行时间</p>
-                                        <div className="flex items-center gap-1.5 text-xs text-white">
-                                            <Calendar className="h-3.5 w-3.5 text-slate-500" />
-                                            {run.date}
+            {!loading && !error && latestCompletedRun && (
+                <div className="glass-card p-8 bg-gradient-to-br from-indigo-600/20 to-cyan-600/20 border-indigo-500/30 relative overflow-hidden">
+                    <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-indigo-300">
+                                <Workflow className="h-4 w-4" />
+                                最新运行
+                            </div>
+                            <h2 className="text-xl font-bold text-white md:text-2xl">{latestCompletedRun.id}</h2>
+                            <p className="mt-2 text-sm text-slate-300">
+                                Task: {latestCompletedRun.taskId} · Runner: {getRunnerLabel(latestCompletedRun, runnerMap)}
+                            </p>
+                            <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-200">
+                                <span className="rounded-lg bg-white/10 px-3 py-1">
+                                    Latency {formatLatency(latestCompletedRun.metrics.latency)}
+                                </span>
+                                <span className="rounded-lg bg-white/10 px-3 py-1">
+                                    Tokens {latestCompletedRun.metrics.tokens ?? "-"}
+                                </span>
+                                <span className="rounded-lg bg-white/10 px-3 py-1">
+                                    Started {formatDateTime(latestCompletedRun.startedAt)}
+                                </span>
+                            </div>
+                        </div>
+                        <Link
+                            href={`/results/${latestCompletedRun.id}`}
+                            className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-indigo-700 transition-colors hover:bg-indigo-50"
+                        >
+                            查看 Run Detail
+                            <SquareArrowOutUpRight className="h-4 w-4" />
+                        </Link>
+                    </div>
+                </div>
+            )}
+
+            {!loading && !error && runs.length === 0 && (
+                <div className="glass-card p-10 text-center text-slate-400">
+                    暂无运行记录，请先通过 /api/eval/run 或 /api/eval/scenario 触发一次运行。
+                </div>
+            )}
+
+            {!loading && !error && runs.length > 0 && (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between px-1">
+                        <h3 className="text-lg font-semibold text-white">历史记录</h3>
+                        <p className="text-xs text-slate-500">已选择 {selectedRunIds.length}/2 个用于 Compare</p>
+                    </div>
+
+                    <div className="space-y-3">
+                        {runs.map((run) => {
+                            const meta = statusMeta(run.status);
+                            const StatusIcon = meta.icon;
+                            const isSelected = selectedRunIds.includes(run.id);
+
+                            return (
+                                <div key={run.id} className="glass-card group transition-all hover:bg-white/5">
+                                    <div className="flex flex-col gap-4 p-5 md:flex-row md:items-center">
+                                        <div className="flex flex-1 flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                            <div>
+                                                <p className="text-sm font-bold text-white">{run.id}</p>
+                                                <p className="mt-1 text-xs text-slate-400">
+                                                    Task {run.taskId} · {getRunnerLabel(run, runnerMap)}
+                                                </p>
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center gap-3 text-xs">
+                                                <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-1", meta.className)}>
+                                                    <StatusIcon className={cn("h-3.5 w-3.5", run.status === "running" ? "animate-spin" : "")} />
+                                                    {meta.label}
+                                                </span>
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-1 text-slate-300">
+                                                    <Clock3 className="h-3.5 w-3.5" />
+                                                    {formatLatency(run.metrics.latency)}
+                                                </span>
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-1 text-slate-300">
+                                                    <Calendar className="h-3.5 w-3.5" />
+                                                    {formatDateTime(run.startedAt)}
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <div>
-                                        <p className="text-xs text-slate-500 font-medium mb-1">性能指标</p>
                                         <div className="flex items-center gap-3">
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] text-slate-500 uppercase">准确率</span>
-                                                <span className={cn(
-                                                    "text-sm font-bold",
-                                                    run.accuracy > 0.9 ? "text-emerald-400" : run.accuracy > 0.7 ? "text-amber-400" : "text-red-400"
-                                                )}>{(run.accuracy * 100).toFixed(1)}%</span>
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] text-slate-500 uppercase">延迟</span>
-                                                <span className="text-sm font-bold text-white">{run.latency}</span>
-                                            </div>
+                                            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-300">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={() => toggleCompare(run.id)}
+                                                    className="h-3.5 w-3.5 rounded border-white/20 bg-transparent"
+                                                />
+                                                参与对比
+                                            </label>
+                                            <Link
+                                                href={`/results/${run.id}`}
+                                                className="inline-flex items-center gap-1 rounded-lg bg-indigo-500/10 px-3 py-2 text-xs font-semibold text-indigo-300 transition-colors hover:bg-indigo-500/20"
+                                            >
+                                                <FileText className="h-3.5 w-3.5" />
+                                                详情
+                                                <ChevronRight className="h-3.5 w-3.5" />
+                                            </Link>
                                         </div>
                                     </div>
-
-                                    <div className="flex items-center justify-end">
-                                        <button className="flex items-center gap-1 text-xs font-bold text-indigo-400 group-hover:text-indigo-300 transition-colors">
-                                            <FileText className="h-4 w-4" /> 报告 <ChevronRight className="h-4 w-4" />
-                                        </button>
-                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Analytics Insight */}
-            <div className="glass-card p-6 border-dashed border-white/10 bg-transparent">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 rounded-lg bg-indigo-500/10">
-                        <TrendingUp className="h-5 w-5 text-indigo-400" />
+                            );
+                        })}
                     </div>
-                    <h3 className="text-lg font-semibold text-white">趋势分析</h3>
                 </div>
-                <p className="text-sm text-slate-400">
-                    在过去 30 天内，您的 Agent 平均准确率提升了 <span className="text-emerald-400 font-bold">15.4%</span>，这主要归功于对 Prompt 结构的优化。
-                </p>
-                <div className="mt-6 h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-indigo-500 to-cyan-500 w-[75%]" />
-                </div>
-                <div className="mt-2 flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                    <span>上月: 62%</span>
-                    <span>目标: 95%</span>
-                </div>
-            </div>
+            )}
         </div>
     );
 }
