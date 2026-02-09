@@ -142,8 +142,14 @@ backend/
 ### 运行测试
 
 ```bash
-# 运行所有测试
+# 运行所有测试（会自动准备 prisma/test.db）
 npm test
+
+# 运行存储层测试（先执行最小化迁移）
+npm run test:storage
+
+# 仅准备测试数据库（调试时可单独执行）
+npm run test:prepare-db
 
 # 运行测试并查看覆盖率
 npm run test:coverage
