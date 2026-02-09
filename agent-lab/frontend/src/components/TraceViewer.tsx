@@ -29,6 +29,10 @@ export function TraceViewer({ testRun }: TraceViewerProps) {
 
 function ResultCard({ result, index }: { result: TestResult; index: number }) {
     const isCorrect = result.isCorrect;
+    const confidence =
+        typeof result.metrics?.confidence === 'number'
+            ? result.metrics.confidence
+            : null;
 
     return (
         <div className={cn(
@@ -67,8 +71,8 @@ function ResultCard({ result, index }: { result: TestResult; index: number }) {
 
             <div className="mt-3 pt-3 border-t border-zinc-800 flex gap-4 text-xs text-zinc-500">
                 <span className="flex items-center gap-1">⏱️ {result.latency}ms</span>
-                {result.metrics?.confidence && (
-                    <span className="flex items-center gap-1">🎯 {(result.metrics.confidence * 100).toFixed(1)}%</span>
+                {confidence !== null && (
+                    <span className="flex items-center gap-1">🎯 {(confidence * 100).toFixed(1)}%</span>
                 )}
             </div>
         </div>

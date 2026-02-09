@@ -5,22 +5,24 @@ import {
     Plus,
     Trash2,
     CheckCircle2,
-    XCircle,
     ExternalLink,
     Key,
     Globe,
     Server
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
-const providers = [
-    { id: "openai", name: "OpenAI", icon: "O" },
-    { id: "anthropic", name: "Anthropic", icon: "A" },
-    { id: "custom", name: "Custom", icon: "C" },
-];
+type Provider = "openai" | "anthropic" | "custom";
+
+interface Config {
+    id: string;
+    name: string;
+    provider: Provider;
+    model: string;
+    isDefault: boolean;
+}
 
 export default function SettingsPage() {
-    const [configs, setConfigs] = useState([
+    const [configs] = useState<Config[]>([
         { id: "1", name: "GPT-4o Production", provider: "openai", model: "gpt-4o", isDefault: true },
     ]);
 
