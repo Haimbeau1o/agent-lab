@@ -5,6 +5,14 @@ import { MOCK_TEST_RUN, MOCK_REPORT } from '../lib/mock-data';
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
+function getErrorMessage(error: unknown): string {
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    return '测试执行失败';
+}
+
 export function useTestRun() {
     const [testRun, setTestRun] = useState<TestRun | null>(null);
     const [report, setReport] = useState<EvaluationReport | null>(null);
@@ -53,8 +61,8 @@ export function useTestRun() {
                 const { data: reportData } = await apiClient.getReport(testRunId);
                 setReport(reportData);
             }
-        } catch (err: any) {
-            setError(err.message || '测试执行失败');
+        } catch (error: unknown) {
+            setError(getErrorMessage(error));
             setStatus('failed');
         }
     }, []);

@@ -6,7 +6,6 @@ import {
     MessageSquare,
     Brain,
     Search,
-    Filter,
     Plus,
     ArrowRight,
     ShieldCheck,

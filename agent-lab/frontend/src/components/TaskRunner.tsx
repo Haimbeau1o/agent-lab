@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Agent, Task } from '../types/api';
+import { useEffect, useState } from 'react';
+import { Agent, ApiConfig, Task } from '../types/api';
 import { apiClient } from '../lib/api-client';
 import { MOCK_AGENTS, MOCK_TASKS } from '../lib/mock-data';
 import { cn } from '../lib/utils';
@@ -10,39 +10,60 @@ interface TaskRunnerProps {
 }
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
+const MOCK_CONFIGS: ApiConfig[] = [{ id: 'mock-config', name: 'Mock Config' }];
+
+interface ListResponse<T> {
+    data?: T[];
+}
 
 export function TaskRunner({ onRun, isRunning }: TaskRunnerProps) {
-    const [agents, setAgents] = useState<Agent[]>([]);
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const [apiConfigs, setApiConfigs] = useState<any[]>([]);
+    const [agents, setAgents] = useState<Agent[]>(USE_MOCK ? MOCK_AGENTS : []);
+    const [tasks, setTasks] = useState<Task[]>(USE_MOCK ? MOCK_TASKS : []);
+    const [apiConfigs, setApiConfigs] = useState<ApiConfig[]>(USE_MOCK ? MOCK_CONFIGS : []);
 
-    const [selectedAgent, setSelectedAgent] = useState<string>('');
-    const [selectedTask, setSelectedTask] = useState<string>('');
-    const [selectedConfig, setSelectedConfig] = useState<string>('');
+    const [selectedAgent, setSelectedAgent] = useState<string>(USE_MOCK ? (MOCK_AGENTS[0]?.id ?? '') : '');
+    const [selectedTask, setSelectedTask] = useState<string>(USE_MOCK ? (MOCK_TASKS[0]?.id ?? '') : '');
+    const [selectedConfig, setSelectedConfig] = useState<string>(USE_MOCK ? MOCK_CONFIGS[0].id : '');
 
     useEffect(() => {
         if (USE_MOCK) {
-            setAgents(MOCK_AGENTS);
-            setTasks(MOCK_TASKS);
-            setApiConfigs([{ id: 'mock-config', name: 'Mock Config' }]);
-            if (MOCK_AGENTS.length > 0) setSelectedAgent(MOCK_AGENTS[0].id);
-            if (MOCK_TASKS.length > 0) setSelectedTask(MOCK_TASKS[0].id!);
-            setSelectedConfig('mock-config');
-        } else {
-            Promise.all([
-                apiClient.getAgents(),
-                apiClient.getTasks(),
-                apiClient.getApiConfigs()
-            ]).then(([agentsData, tasksData, configsData]) => {
-                setAgents(agentsData.data || []);
-                setTasks(tasksData.data || []);
-                setApiConfigs(configsData.data || []);
-
-                if (agentsData.data?.length) setSelectedAgent(agentsData.data[0].id);
-                if (tasksData.data?.length) setSelectedTask(tasksData.data[0].id);
-                if (configsData.data?.length) setSelectedConfig(configsData.data[0].id);
-            }).catch(console.error);
+            return;
         }
+
+        let cancelled = false;
+
+        const loadData = async () => {
+            try {
+                const [agentsData, tasksData, configsData] = await Promise.all([
+                    apiClient.getAgents() as Promise<ListResponse<Agent>>,
+                    apiClient.getTasks() as Promise<ListResponse<Task>>,
+                    apiClient.getApiConfigs() as Promise<ListResponse<ApiConfig>>,
+                ]);
+
+                if (cancelled) {
+                    return;
+                }
+
+                const nextAgents = agentsData.data ?? [];
+                const nextTasks = tasksData.data ?? [];
+                const nextConfigs = configsData.data ?? [];
+
+                setAgents(nextAgents);
+                setTasks(nextTasks);
+                setApiConfigs(nextConfigs);
+                setSelectedAgent((current) => current || nextAgents[0]?.id || '');
+                setSelectedTask((current) => current || nextTasks[0]?.id || '');
+                setSelectedConfig((current) => current || nextConfigs[0]?.id || '');
+            } catch (error) {
+                console.error(error);
+            }
+        };
+
+        void loadData();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const handleRun = () => {

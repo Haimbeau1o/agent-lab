@@ -18,8 +18,8 @@ export interface Agent {
 }
 
 export interface TestCase {
-    input: any;
-    expected?: any;
+    input: unknown;
+    expected?: unknown;
 }
 
 export interface Task {
@@ -33,12 +33,12 @@ export interface Task {
 export interface TestResult {
     id: string;
     testRunId: string;
-    input: any;
-    output: any;
-    expected?: any;
+    input: unknown;
+    output: unknown;
+    expected?: unknown;
     latency: number;
     tokenCount?: number;
-    metrics: Record<string, any>;
+    metrics: Record<string, unknown>;
     isCorrect?: boolean;
     createdAt: string;
 }
@@ -53,8 +53,15 @@ export interface TestRun {
     completedAt?: string;
     agent: Agent;
     task: Task;
-    dataset?: any;
+    dataset?: unknown;
     results: TestResult[];
+}
+
+export interface ApiConfig {
+    id: string;
+    name: string;
+    provider?: string;
+    model?: string;
 }
 
 export interface IntentMetrics {
