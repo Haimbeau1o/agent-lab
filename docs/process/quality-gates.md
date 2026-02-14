@@ -24,7 +24,8 @@
 
 ## CI Mapping
 
-- Workflow: `.github/workflows/backend-quality-gates.yml`
+- Backend workflow: `.github/workflows/backend-quality-gates.yml`
+- Frontend workflow: `.github/workflows/frontend-quality-gates.yml`
 - Pull requests run `Run-Priority` automatically.
 - `Strict-Green` can run via manual workflow dispatch (`gate=strict-green`) and on push to `main`.
 
