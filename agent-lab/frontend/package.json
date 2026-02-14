@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "gate:run-priority": "npm run build",
+    "gate:strict-green": "npm run gate:run-priority && npm run lint"
   },
   "dependencies": {
     "clsx": "^2.1.1",

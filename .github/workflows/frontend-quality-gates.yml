@@ -1,0 +1,80 @@
+name: Frontend Quality Gates
+
+on:
+  pull_request:
+    paths:
+      - 'agent-lab/frontend/**'
+      - '.github/workflows/frontend-quality-gates.yml'
+      - 'docs/process/quality-gates.md'
+      - '.github/pull_request_template.md'
+  push:
+    branches:
+      - main
+      - codex/integration-fix-issues-5-9
+    paths:
+      - 'agent-lab/frontend/**'
+      - '.github/workflows/frontend-quality-gates.yml'
+      - 'docs/process/quality-gates.md'
+  workflow_dispatch:
+    inputs:
+      gate:
+        description: Quality gate level
+        type: choice
+        required: true
+        default: run-priority
+        options:
+          - run-priority
+          - strict-green
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-run-priority:
+    name: Frontend Run-Priority
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.gate == 'run-priority' || github.event.inputs.gate == 'strict-green'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent-lab/frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: agent-lab/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run frontend run-priority gate
+        run: npm run gate:run-priority
+
+  frontend-strict-green:
+    name: Frontend Strict-Green
+    needs: frontend-run-priority
+    if: (github.event_name == 'workflow_dispatch' && github.event.inputs.gate == 'strict-green') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent-lab/frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: agent-lab/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run frontend strict-green gate
+        run: npm run gate:strict-green
