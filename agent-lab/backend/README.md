@@ -160,6 +160,19 @@ npm test -- --watch
 
 `npm run test:prepare-db` 会删除并重建 `prisma/test.db`，再执行 `prisma/schema.prisma` 下全部迁移，保证 `score_records` 等测试表一致。
 
+### 分层质量门禁
+
+```bash
+# Run-Priority（PR 默认门禁）
+npm run gate:run-priority
+
+# Strict-Green（升级门禁）
+npm run gate:strict-green
+```
+
+- `gate:run-priority`: `build + storage 基线测试`
+- `gate:strict-green`: `gate:run-priority + 全量 vitest`
+
 ### 数据库操作
 
 ```bash

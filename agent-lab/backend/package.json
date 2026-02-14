@@ -12,6 +12,8 @@
     "test:coverage": "vitest --coverage",
     "test:prepare-db": "node --import tsx src/test/prepare-test-database.ts",
     "test:storage": "npm run test:prepare-db && vitest run src/core/engine/prisma-storage.test.ts",
+    "gate:run-priority": "npm run build && npm run test:storage",
+    "gate:strict-green": "npm run gate:run-priority && vitest run",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
