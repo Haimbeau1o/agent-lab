@@ -595,7 +595,11 @@ NODE_ENV=development
 PORT=3001
 DATABASE_URL="file:./dev.db"
 ENCRYPTION_KEY=your_32_character_key_here
+ENCRYPTION_SALT=your_32_hex_character_salt_here
 ```
+
+- `ENCRYPTION_KEY`：至少 32 字符
+- `ENCRYPTION_SALT`：至少 32 位十六进制字符（>= 16 bytes）
 
 ### 本地运行
 
@@ -614,7 +618,14 @@ npm run prisma:seed
 
 # 启动开发服务器
 npm run dev
+
+# smoke 验证
+curl http://localhost:3001/health
+curl http://localhost:3001/api/eval/runners
+curl http://localhost:3001/api/eval/definitions
 ```
+
+受限环境替代验证请参考：[`../RUNTIME_SMOKE_GUIDE.md`](../RUNTIME_SMOKE_GUIDE.md)
 
 ### 运行测试
 

@@ -53,6 +53,18 @@ NODE_ENV=development
 PORT=3001
 DATABASE_URL="file:./dev.db"
 ENCRYPTION_KEY=your_32_character_encryption_key_here
+ENCRYPTION_SALT=your_32_hex_character_salt_here
+```
+
+必填安全配置说明：
+
+- `ENCRYPTION_KEY`：至少 32 个字符（建议使用高熵随机字符串）
+- `ENCRYPTION_SALT`：至少 32 位十六进制字符（即 >= 16 bytes）
+
+可用以下命令生成：
+
+```bash
+node -e "const crypto=require('crypto'); console.log('ENCRYPTION_KEY=' + crypto.randomBytes(24).toString('hex')); console.log('ENCRYPTION_SALT=' + crypto.randomBytes(16).toString('hex'));"
 ```
 
 ### 3. 初始化数据库
@@ -78,19 +90,40 @@ npm run dev
 
 ### 5. 验证安装
 
-访问健康检查端点：
+执行以下 smoke 命令：
 
 ```bash
 curl http://localhost:3001/health
+curl http://localhost:3001/api/eval/runners
+curl http://localhost:3001/api/eval/definitions
 ```
 
-应返回：
-```json
-{
-  "status": "ok",
-  "timestamp": "2024-01-01T00:00:00.000Z"
-}
+期望：
+
+- `/health` 返回 `status: "ok"`
+- `/api/eval/runners` 返回 `success: true` 且 `data` 为数组
+- `/api/eval/definitions` 返回 `success: true` 且 `data` 包含可用定义
+
+### 6. 受限环境替代验证（无法监听端口）
+
+如果在 CI/sandbox 中无法绑定 `localhost:3001`，可执行以下替代验证：
+
+```bash
+# 1) 校验 ENCRYPTION_* 的格式约束
+ENCRYPTION_KEY="${ENCRYPTION_KEY:-12345678901234567890123456789012}" \
+ENCRYPTION_SALT="${ENCRYPTION_SALT:-0123456789abcdef0123456789abcdef}" \
+node -e "const key=process.env.ENCRYPTION_KEY||''; const salt=process.env.ENCRYPTION_SALT||''; if(key.length<32) throw new Error('ENCRYPTION_KEY must be at least 32 chars'); if(!/^[0-9a-fA-F]{32,}$/.test(salt)) throw new Error('ENCRYPTION_SALT must be hex and >=32 chars'); console.log('ENCRYPTION_* format check passed');"
+
+# 2) 静态检查关键路由是否存在
+rg "app.get\\('/health'" src/index.ts
+rg "router.get\\('/runners'" src/api/eval/index.ts
+rg "router.get\\('/definitions'" src/api/eval/index.ts
+
+# 3) 类型构建检查
+npm run build
 ```
+
+完整说明见：[`docs/RUNTIME_SMOKE_GUIDE.md`](./docs/RUNTIME_SMOKE_GUIDE.md)
 
 ## API 文档
 
