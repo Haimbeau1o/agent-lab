@@ -450,6 +450,8 @@ We welcome contributions! Please follow these steps:
 4. Push to the Branch (`git push origin feature/AmazingFeature`).
 5. Open a Pull Request.
 
+Before opening a PR, pick and report your gate level (`Run-Priority` or `Strict-Green`) and run the required checks in [`docs/process/quality-gates.md`](./docs/process/quality-gates.md).
+
 ### 📄 License
 
 Distributed under the MIT License. See `LICENSE` for more information.
