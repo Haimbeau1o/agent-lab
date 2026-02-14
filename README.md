@@ -179,6 +179,20 @@ npm run dev
 # 🎨 Frontend running at http://localhost:3000
 ```
 
+**Build Mode Guide (Frontend)**
+
+```bash
+cd frontend
+
+# Default build path (Turbopack)
+npm run build
+
+# Fallback for restricted/sandboxed environments
+npm run build:webpack
+```
+
+Use `npm run build:webpack` when Turbopack fails with environment restrictions (for example `Operation not permitted (os error 1)` while binding resources).
+
 **4. Verify Installation**
 
 ```bash
@@ -561,6 +575,20 @@ npm install
 npm run dev
 # 🎨 前端运行在 http://localhost:3000
 ```
+
+**前端构建模式说明**
+
+```bash
+cd frontend
+
+# 默认构建路径（Turbopack）
+npm run build
+
+# 受限 / 沙箱环境回退路径
+npm run build:webpack
+```
+
+如果 Turbopack 在受限环境报错（例如 `Operation not permitted (os error 1)`），请切换到 `npm run build:webpack`。
 
 **4. 验证安装**
 
