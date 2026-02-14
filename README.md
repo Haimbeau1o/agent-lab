@@ -154,7 +154,9 @@ npm install
 
 # Configure environment variables
 cp .env.example .env
-# Edit .env and set ENCRYPTION_KEY (32 characters)
+# Edit .env and set ENCRYPTION_KEY + ENCRYPTION_SALT
+# ENCRYPTION_KEY: >= 32 characters
+# ENCRYPTION_SALT: >= 32 hex characters (>= 16 bytes)
 
 # Initialize database
 npm run prisma:generate
@@ -182,14 +184,17 @@ npm run dev
 **4. Verify Installation**
 
 ```bash
-# Test backend health check
+# Smoke check 1: health
 curl http://localhost:3001/health
-# Should return: {"status":"ok","timestamp":"..."}
 
-# View built-in Agents
-curl http://localhost:3001/api/agents
-# Should return 3 built-in Agents
+# Smoke check 2: registered runners
+curl http://localhost:3001/api/eval/runners
+
+# Smoke check 3: registry definitions
+curl http://localhost:3001/api/eval/definitions
 ```
+
+For sandbox/CI environments that cannot listen on localhost ports, use the fallback verification steps in [`agent-lab/backend/docs/RUNTIME_SMOKE_GUIDE.md`](./agent-lab/backend/docs/RUNTIME_SMOKE_GUIDE.md).
 
 ### 💡 User Guide
 
@@ -537,7 +542,9 @@ npm install
 
 # 配置环境变量
 cp .env.example .env
-# 编辑 .env，设置 ENCRYPTION_KEY（32位字符）
+# 编辑 .env，设置 ENCRYPTION_KEY + ENCRYPTION_SALT
+# ENCRYPTION_KEY: 至少 32 位字符
+# ENCRYPTION_SALT: 至少 32 位十六进制字符（>= 16 bytes）
 
 # 初始化数据库
 npm run prisma:generate
@@ -565,14 +572,17 @@ npm run dev
 **4. 验证安装**
 
 ```bash
-# 测试后端健康检查
+# Smoke 检查 1：健康检查
 curl http://localhost:3001/health
-# 应返回: {"status":"ok","timestamp":"..."}
 
-# 查看内置 Agent
-curl http://localhost:3001/api/agents
-# 应返回 3 个内置 Agent
+# Smoke 检查 2：注册 Runner
+curl http://localhost:3001/api/eval/runners
+
+# Smoke 检查 3：注册定义
+curl http://localhost:3001/api/eval/definitions
 ```
+
+若在 sandbox/受限 CI 中无法监听本地端口，请改用替代验证流程：[`agent-lab/backend/docs/RUNTIME_SMOKE_GUIDE.md`](./agent-lab/backend/docs/RUNTIME_SMOKE_GUIDE.md)。
 
 ### 💡 使用指南
 
