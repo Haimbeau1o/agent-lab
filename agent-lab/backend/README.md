@@ -158,6 +158,8 @@ npm run test:coverage
 npm test -- --watch
 ```
 
+`npm run test:prepare-db` 会删除并重建 `prisma/test.db`，再执行 `prisma/schema.prisma` 下全部迁移，保证 `score_records` 等测试表一致。
+
 ### 数据库操作
 
 ```bash

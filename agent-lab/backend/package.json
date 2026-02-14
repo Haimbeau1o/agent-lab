@@ -10,7 +10,7 @@
     "start": "node dist/index.js",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
-    "test:prepare-db": "tsx src/test/prepare-test-database.ts",
+    "test:prepare-db": "node --import tsx src/test/prepare-test-database.ts",
     "test:storage": "npm run test:prepare-db && vitest run src/core/engine/prisma-storage.test.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
